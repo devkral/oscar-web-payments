@@ -10,17 +10,24 @@ CENTS = Decimal("0.01")
 
 class Source(AbstractSource, BasePayment):
     variant = None
+    order = models.ForeignKey(
+        'order.Order',
+        on_delete=models.CASCADE,
+        related_name='sources',
+        verbose_name=_("Order"), null=True)
     amount_refunded = models.DecimalField(
         _("Amount Refunded"), decimal_places=2, max_digits=12,
         default=Decimal('0.0'))
 
+    currency = models.CharField(max_length=10)
+
     shipping_method_code = models.CharField(max_length=100, null=True, blank=True)
 
     def get_success_url(self):
-        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:thank-you'))
+        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:payment-details', kwargs={"status": "success"}))
 
     def get_failure_url(self):
-        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:payment-details'))
+        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:payment-details', kwargs={"status": "failure"}))
 
     def allocate(self, amount, reference='', status=''):
         """

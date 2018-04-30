@@ -22,10 +22,13 @@ except ImportError:
     from django.conf.urls import include
 
 from web_payments.django import urls as web_payment_urls
+from oscar.app import application
 #from .views import PaymentView, PayObView, SelectView
 
 
 urlpatterns = [
+    url(r'^i18n/', include('django.conf.urls.i18n')),
     url('^admin/', admin.site.urls),
     url('^payment/', include(web_payment_urls)),
+    url(r'', include(application.urls)),
 ]

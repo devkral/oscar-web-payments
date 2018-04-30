@@ -150,9 +150,15 @@ USE_L10N = True
 
 USE_TZ = True
 
+OSCAR_INITIAL_ORDER_STATUS = 'Pending'
+OSCAR_INITIAL_LINE_STATUS = 'Pending'
+OSCAR_ORDER_STATUS_PIPELINE = {
+    'Pending': ('Being processed', 'Cancelled',),
+    'Being processed': ('Processed', 'Cancelled',),
+    'Cancelled': (),
+}
 
-STATICFILES_DIRS = [
-]
+OSCAR_ALLOW_ANON_CHECKOUT = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
@@ -163,12 +169,12 @@ PAYMENT_MODEL = 'payment.Source'
 PAYMENT_HOST = 'localhost:8000'
 PAYMENT_PROTOCOL = "http"
 PAYMENT_VARIANTS_API = {
-    'dummy_capture': ('web_payments_dummy.DummyProvider', {}, {}),
-    'dummy_nocapture': ('web_payments_dummy.DummyProvider', {"capture": False}, {}),
-    'directwithform': ('web_payments_externalpayments.DirectPaymentProvider', {'skipform': False, 'confirm': True}, {}),
-    'direct': ('web_payments_externalpayments.DirectPaymentProvider', {}, {}),
-    'IBAN': ('web_payments_externalpayments.BankTransferProvider', {
-        "iban": "GL5604449876543210",
-        "bic": "DABAIE2D"}, {"localized_name": "iban"}
+    'dummy_capture': ('web_payments_dummy.DummyProvider', {}, {"verbose_name": "dummy capturing"}),
+    'dummy_nocapture': ('web_payments_dummy.DummyProvider', {"capture": False}, {"verbose_name": "dummy not capturing"}),
+    'directwithform': ('web_payments_externalpayments.DirectPaymentProvider', {'skipform': False, 'confirm': True}, {"verbose_name": "direct payment with form"}),
+    'direct': ('web_payments_externalpayments.DirectPaymentProvider', {}, {"verbose_name": "direct payment"}),
+    'iban': ('web_payments_externalpayments.BankTransferProvider', {
+        "iban": "XX5604449899990000",
+        "bic": "DABAIE2D"}, {"verbose_name": "IBAN"}
         ),
     }
