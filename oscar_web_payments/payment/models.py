@@ -14,6 +14,14 @@ class Source(AbstractSource, BasePayment):
         _("Amount Refunded"), decimal_places=2, max_digits=12,
         default=Decimal('0.0'))
 
+    shipping_method_code = models.CharField(max_length=100, null=True, blank=True)
+
+    def get_success_url(self):
+        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:thank-you'))
+
+    def get_failure_url(self):
+        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:payment-details'))
+
     def allocate(self, amount, reference='', status=''):
         """
         Convenience method for ring-fencing money against this source

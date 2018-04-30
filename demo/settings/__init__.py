@@ -15,6 +15,7 @@ import os
 from oscar.defaults import *
 from oscar import OSCAR_MAIN_TEMPLATE_DIR
 from oscar import get_core_apps
+from oscar_web_payments import WEB_PAYMENTS_TEMPLATe_DIR
 
 from django.contrib.messages import constants as message_constants
 

@@ -1,0 +1,12 @@
+{% extends "checkout/checkout.html" %}
+{% load i18n %}
+
+{% block payment_method %}
+  <form action="{% url 'checkout:payment-method' %}" class="form-stacked" method="POST">
+      {% csrf_token %}
+      {% include "partials/form_fields.html" %}
+      <button type="submit" value="{% trans "Proceed" %}" class="btn btn-primary btn-large">{% trans "Proceed" %}</button>
+  </form>
+{% endblock %}
+
+{% block payment_details %}{% endblock %}
