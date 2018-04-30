@@ -1,0 +1,23 @@
+sudo: false
+language: python
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+env:
+  - DJANGO="1.11" OSCAR="1.5"
+  - DJANGO="1.11" OSCAR="1.6"
+  - DJANGO="2.0" OSCAR="1.6"
+  - DJANGO="master" OSCAR="1.6"
+matrix:
+  allow_failures:
+    - python: "3.5"
+      env: DJANGO="master" OSCAR="1.6"
+    - python: "3.6"
+      env: DJANGO="master" OSCAR="1.6"
+  exclude:
+    - python: "3.4"
+      env: DJANGO="master" OSCAR="1.6"
+after_success: codecov
+install: pip install tox-travis codecov
+script: tox

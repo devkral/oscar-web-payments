@@ -1,0 +1,14 @@
+[run]
+branch = True
+omit =
+    oscar_web_payments/test_*.py
+    oscar_web_payments/*/test_*.py
+source =
+    oscar_web_payments
+
+
+[report]
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    return NotImplemented

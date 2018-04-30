@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en-US' }}">
+  <head>
+      <title>{{mytitle}}</title>
+      <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+      <meta name="viewport" content="{% block viewport %}width=device-width, initial-scale=1.0{% endblock %}">
+      <meta name="description" content="{% block description %}{% endblock %}" />
+      <link rel="stylesheet" type="text/css" href="{% block stylesheet %}{% static 'w3.css' %}{% endblock %}" />
+
+      {# CSS for all pages #}
+      {% block base_styles %}{% endblock %}
+      {# CSS for page #}
+      {% block styles %}{% endblock %}
+      {# form scripts and foo #}
+      {% block extrahead %}{% endblock %}
+  </head>
+
+  <body class="{% block body_class %}{% endblock %}" {% block body_stuff %}{% endblock %}>
+    <main class="w3-center">
+      {% block fhead %}
+        <h1><a href="{% url "select-form" %}">{{mytitle}}</a></h1>
+      {% endblock %}
+      {% block messages %}
+          {% if messages %}
+          <ul class="">{% for message in messages %}
+            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message|capfirst }}</li>
+          {% endfor %}</ul>
+          {% endif %}
+      {% endblock messages %}
+      {# Main, e.g.base.html  #}
+      {% block main %}{% endblock main %}
+    </main>
+  </body>
+</html>
