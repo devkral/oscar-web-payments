@@ -22,7 +22,7 @@ except ImportError:
     from django.conf.urls import include
 
 from web_payments.django import urls as web_payment_urls
-from .views import PaymentView, PayObView, SelectView
+#from .views import PaymentView, PayObView, SelectView
 
 
 urlpatterns = [

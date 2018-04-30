@@ -1,1 +1,1 @@
-default_app_config = "web_payments_dummy.django_dummy.apps.DummyPaymentsConfig"
+default_app_config = "demo.apps.OscarDemoConfig"

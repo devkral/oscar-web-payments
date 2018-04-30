@@ -10,16 +10,17 @@ DJANGO_VERSIONS="django>=1.11"
 
 PACKAGES = [
     'oscar_web_payments',
-    'oscar_web_payments.payments',
-    'oscar_web_payments.checkout']
+    'oscar_web_payments.payment',
+    'oscar_web_payments.checkout'
+    ]
 
 REQUIREMENTS = [
     'django-oscar>=1.5,<2.0',
-    'web-payments-connector>=2.0<3.0'
+    'django>=1.11',
+    'web-payments-connector>=2.4<3.0'
 ]
 
 TEST_REQUIREMENTS = [
-    DJANGO_VERSIONS,
     'pytest',
     'pytest-django'
 ]

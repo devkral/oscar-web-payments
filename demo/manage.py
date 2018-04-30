@@ -3,12 +3,16 @@ import os
 import sys
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-sys.path.insert(0, BASE_DIR)
+# replace "" by real base path
+sys.path[0] = BASE_DIR
 
 if __name__ == "__main__":
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "web_payments_dummy.django_dummy.settings")
+    if any(map(lambda x: "runserver" in x, sys.argv)):
+        os.environ.setdefault("DJANGO_SETTINGS_MODULE", "demo.settings.demo")
+    else:
+        os.environ.setdefault("DJANGO_SETTINGS_MODULE", "demo.settings")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
