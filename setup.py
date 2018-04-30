@@ -17,6 +17,7 @@ PACKAGES = [
 REQUIREMENTS = [
     'django-oscar>=1.5,<2.0',
     'django>=1.11',
+    'wtforms-django2',
     'web-payments-connector>=2.4<3.0'
 ]
 
@@ -87,4 +88,7 @@ setup(
       cmdclass={
         'test': PyTest},
       tests_require=TEST_REQUIREMENTS,
+      dependency_links=[
+        "git+https://github.com/devkral/wtforms-django.git#branch=alex"
+      ],
       zip_safe=False)
