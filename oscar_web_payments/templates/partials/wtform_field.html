@@ -11,8 +11,8 @@
         <div class="form-group {% if field.errors %}has-error{% endif %}">
 
             {% block label %}
-                {% if not nolabel and field.widget_type != 'CheckboxInput' %}
-                    <label for="{{ field.id }}" class="{% if style|default:"stacked" != 'stacked' %}col-sm-4{% endif%} control-label{% if field.field.required %} required{% endif %}">
+                {% if not nolabel and field.type != 'BooleanField' %}
+                    <label for="{{ field.id }}" class="{% if style|default:"stacked" != 'stacked' %}col-sm-4{% endif%} control-label{% if field.flags.required %} required{% endif %}">
                         {{ field.label.text|safe }}
                     </label>
                 {% endif %}
@@ -22,7 +22,7 @@
                 <div class="{% if style|default:"stacked" != 'stacked' %}col-sm-7{% endif %}">
                     {% block widget %}
                         {% if field.type == 'BooleanField' %}
-                            <label for="{{ field.auto_id }}" class="checkbox {% if field.field.required %}required{% endif %}">
+                            <label for="{{ field.id }}" class="checkbox {% if field.flags.required %}required{% endif %}">
                                 {{ field.label.text|safe }}
                                 {% form_field field class="form-control" %}
                             </label>

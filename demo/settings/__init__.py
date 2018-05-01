@@ -49,7 +49,6 @@ INSTALLED_APPS = [
     'django.contrib.flatpages',
     'django.contrib.sitemaps',
     'web_payments.django',
-    'wtforms_django',
 ] + get_core_apps(['oscar_web_payments.checkout', 'oscar_web_payments.payment'])
 
 HAYSTACK_CONNECTIONS = {

@@ -174,7 +174,10 @@ class PaymentDetailsView(CorePaymentDetailsView):
             source.temp_tax=order_total.tax,
             source.temp_delivery=shipping_charge
             try:
-                form = source.get_form(data=self.request.POST)
+                if self.request.method == "GET":
+                    form = source.get_form()
+                else:
+                    form = source.get_form(data=self.request.POST)
                 if source.status not in [PaymentStatus.CONFIRMED, PaymentStatus.PREAUTH]:
                     return self.render_payment_details(self.request, paymentform=form)
             except web_payments.RedirectNeeded as e:
