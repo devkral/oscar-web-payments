@@ -118,37 +118,12 @@ class PaymentDetailsView(CorePaymentDetailsView):
         if order_kwargs is None:
             order_kwargs = {}
 
-        # Taxes must be known at this point
-        assert basket.is_tax_known, (
-            "Basket tax must be set before a user can place an order")
-        assert shipping_charge.is_tax_known, (
-            "Shipping charge tax must be set before a user can place an order")
-
-        # We generate the order number first as this will be used
-        # in payment requests (ie before the order model has been
-        # created).  We also save it in the session for multi-stage
-        # checkouts (eg where we redirect to a 3rd party site and place
-        # the order on a different request).
-        order_number = self.generate_order_number(basket)
-        self.checkout_session.set_order_number(order_number)
-        logger.info("Order #%s: beginning submission process for basket #%d",
-                    order_number, basket.id)
-
-        # Freeze the basket so it cannot be manipulated while the customer is
-        # completing payment on a 3rd party site.  Also, store a reference to
-        # the basket in the session so that we know which basket to thaw if we
-        # get an unsuccessful payment response when redirecting to a 3rd party
-        # site.
-        self.freeze_basket(basket)
-        self.checkout_session.set_submitted_basket(basket)
 
         # We define a general error message for when an unanticipated payment
         # error occurs.
         error_msg = _("A problem occurred while processing payment for this "
                       "order - no payment has been taken.  Please "
                       "contact customer services if this problem persists")
-
-        signals.pre_payment.send_robust(sender=self, view=self)
 
         source_type = SourceType.objects.get_or_create(defaults={"name": self.request.session["payment_method"]}, code=self.request.session["payment_method"])[0]
         try:
@@ -162,6 +137,31 @@ class PaymentDetailsView(CorePaymentDetailsView):
             )
             self.request.session["paymentid"] = source.id
 
+            # Taxes must be known at this point
+            assert basket.is_tax_known, (
+                "Basket tax must be set before a user can place an order")
+            assert shipping_charge.is_tax_known, (
+                "Shipping charge tax must be set before a user can place an order")
+
+            # We generate the order number first as this will be used
+            # in payment requests (ie before the order model has been
+            # created).  We also save it in the session for multi-stage
+            # checkouts (eg where we redirect to a 3rd party site and place
+            # the order on a different request).
+
+            order_number = self.generate_order_number(basket)
+            self.checkout_session.set_order_number(order_number)
+            logger.info("Order #%s: beginning submission process for basket #%d",
+                        order_number, basket.id)
+
+            # Freeze the basket so it cannot be manipulated while the customer is
+            # completing payment on a 3rd party site.  Also, store a reference to
+            # the basket in the session so that we know which basket to thaw if we
+            # get an unsuccessful payment response when redirecting to a 3rd party
+            # site.
+            self.freeze_basket(basket)
+            self.checkout_session.set_submitted_basket(basket)
+            signals.pre_payment.send_robust(sender=self, view=self)
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
             del self.request.session["paymentid"]
             self.restore_frozen_basket()
@@ -173,39 +173,42 @@ class PaymentDetailsView(CorePaymentDetailsView):
             source.temp_billing = billing_address
             source.temp_tax=order_total.tax,
             source.temp_delivery=shipping_charge
-            try:
-                if self.request.method == "GET":
-                    form = source.get_form()
-                else:
-                    form = source.get_form(data=self.request.POST)
-                if source.status not in [PaymentStatus.CONFIRMED, PaymentStatus.PREAUTH]:
-                    return self.render_payment_details(self.request, paymentform=form)
-            except web_payments.RedirectNeeded as e:
-                # Redirect required (eg PayPal, 3DS)
-                logger.info("Order #%s: redirecting to %s", order_number, e.args[0])
-                return http.HttpResponseRedirect(e.args[0])
-            except web_payments.PaymentError as e:
-                # A general payment error - Something went wrong which wasn't
-                # anticipated.  Eg, the payment gateway is down (it happens), your
-                # credentials are wrong - that king of thing.
-                # It makes sense to configure the checkout logger to
-                # mail admins on an error as this issue warrants some further
-                # investigation.
-                msg = str(e)
-                logger.error("Order #%s: payment error (%s)", order_number, msg,
-                             exc_info=True)
-                self.restore_frozen_basket()
-                return self.render_preview(
-                    self.request, error=error_msg, **payment_kwargs)
-            except Exception as e:
-                # Unhandled exception - hopefully, you will only ever see this in
-                # development...
-                logger.error(
-                    "Order #%s: unhandled exception while taking payment (%s)",
-                    order_number, e, exc_info=True)
-                self.restore_frozen_basket()
-                return self.render_preview(
-                    self.request, error=error_msg, **payment_kwargs)
+
+        order_number = self.checkout_session.get_order_number()
+
+        try:
+            if self.request.method == "GET":
+                form = source.get_form()
+            else:
+                form = source.get_form(data=self.request.POST)
+            if source.status not in [PaymentStatus.CONFIRMED, PaymentStatus.PREAUTH]:
+                return self.render_payment_details(self.request, paymentform=form)
+        except web_payments.RedirectNeeded as e:
+            # Redirect required (eg PayPal, 3DS)
+            logger.info("Order #%s: redirecting to %s", order_number, e.args[0])
+            return http.HttpResponseRedirect(e.args[0])
+        except web_payments.PaymentError as e:
+            # A general payment error - Something went wrong which wasn't
+            # anticipated.  Eg, the payment gateway is down (it happens), your
+            # credentials are wrong - that king of thing.
+            # It makes sense to configure the checkout logger to
+            # mail admins on an error as this issue warrants some further
+            # investigation.
+            msg = str(e)
+            logger.error("Order #%s: payment error (%s)", order_number, msg,
+                         exc_info=True)
+            self.restore_frozen_basket()
+            return self.render_preview(
+                self.request, error=error_msg, **payment_kwargs)
+        except Exception as e:
+            # Unhandled exception - hopefully, you will only ever see this in
+            # development...
+            logger.error(
+                "Order #%s: unhandled exception while taking payment (%s)",
+                order_number, e, exc_info=True)
+            self.restore_frozen_basket()
+            return self.render_preview(
+                self.request, error=error_msg, **payment_kwargs)
 
         signals.post_payment.send_robust(sender=self, view=self)
 

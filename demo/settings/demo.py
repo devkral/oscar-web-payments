@@ -1,3 +1,3 @@
 from . import *
 
-INSTALLED_APPS += ['compressor', 'widget_tweaks', 'wtforms_django']
+INSTALLED_APPS += ['compressor', 'widget_tweaks']

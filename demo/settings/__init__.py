@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django.contrib.flatpages',
     'django.contrib.sitemaps',
+    'wtforms_django',
     'web_payments.django',
 ] + get_core_apps(['oscar_web_payments.checkout', 'oscar_web_payments.payment'])
 
