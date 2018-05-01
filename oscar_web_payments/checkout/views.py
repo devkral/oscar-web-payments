@@ -126,15 +126,12 @@ class PaymentDetailsView(CorePaymentDetailsView):
                       "contact customer services if this problem persists")
 
         source_type = SourceType.objects.get_or_create(defaults={"name": self.request.session["payment_method"]}, code=self.request.session["payment_method"])[0]
-        try:
-            source = Source.objects.get(id=self.request.session["paymentid"])
-        except (ObjectDoesNotExist, KeyError):
-            source = Source.objects.create(
-                source_type=source_type,
-                currency=basket.currency,
-                total=order_total.incl_tax,
-                captured_amount=order_total.incl_tax,
-            )
+        source, created = Source.objects.get_or_create(defaults={"source_type": source_type,
+                "currency": basket.currency,
+                "total": order_total.incl_tax,
+                "captured_amount": order_total.incl_tax
+            }, id=self.request.session["paymentid"])
+        if created:
             self.request.session["paymentid"] = source.id
 
             # Taxes must be known at this point
@@ -162,6 +159,7 @@ class PaymentDetailsView(CorePaymentDetailsView):
             self.freeze_basket(basket)
             self.checkout_session.set_submitted_basket(basket)
             signals.pre_payment.send_robust(sender=self, view=self)
+
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
             del self.request.session["paymentid"]
             self.restore_frozen_basket()

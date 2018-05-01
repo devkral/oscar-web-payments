@@ -19,7 +19,9 @@
     {% endif %}
 
     {% for field in paymentform %}
-      {% include "partials/wtform_field.html" with field=field %}
+      {{field.label}}
+      {{field}}
+      {#{% include "partials/wtform_field.html" with field=field %}#}
     {% endfor %}
 
     <div class="form-group clearfix">
