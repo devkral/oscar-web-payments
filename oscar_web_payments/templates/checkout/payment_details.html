@@ -1,13 +1,13 @@
-{% extends "checkout/checkout.html" %}
+{% extends "checkout/payment_details.html" %}
+{% load i18n %}
 
 {% block payment_details_content %}
-  {% url 'checkout:payment-details' as selfurl %}
+  {% url 'checkout:payment' as selfurl %}
   {% if paymentform.action == "" or paymentform.action == selfurl %}
   <form action="
-    {% url 'checkout:payment-details' status="submit" %}" class="form-stacked" method="{{ paymentform.method }}">
+    {% url 'checkout:payment' %}" class="form-stacked" method="{{ paymentform.method }}">
     {# form doesn't leak token in these cases #}
     {% csrf_token %}
-    <input type="hidden" name="action" value="place_order"/>
   {% else %}
   <form action="{{ paymentform.action }}" class="form-stacked" method="{{ paymentform.method }}">
   {% endif %}
@@ -19,28 +19,15 @@
     {% endif %}
 
     {% for field in paymentform %}
-        {% if field.is_hidden %}
-            {{ field }}
-        {% else %}
-            <div class="form-group row {% if field.errors %}error{% endif %}">
-              <div class="col-md-3">
-                {{ field.label }}
-              </div>
-              <div class="col-md-5">
-                {{ field }}
-              </div>
-              {% if field.errors %}
-                <div class="col-md-4">
-                  {% for error in field.errors %}
-                      <ul class="error-block">
-                          <li>{{ error }}</li>
-                      </ul>
-                  {% endfor %}
-                </div>
-              {% endif %}
-            </div>
-        {% endif %}
+      {% include "partials/wtform_field.html" with field=field %}
     {% endfor %}
-    <button type="submit" class="btn btn-primary btn-large">{% trans "Proceed" %}</button>
+
+    <div class="form-group clearfix">
+        <div class="row">
+            <div class="col-sm-3 col-sm-offset-9">
+                 <button id='place-order' type="submit" class="btn btn-primary btn-lg btn-block" data-loading-text="{% trans 'Submitting...' %}">{% trans "Place order" %}</button>
+            </div>
+        </div>
+    </div>
   </form>
 {% endblock %}

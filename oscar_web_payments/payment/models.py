@@ -10,6 +10,8 @@ CENTS = Decimal("0.01")
 
 class Source(AbstractSource, BasePayment):
     variant = None
+    temp_shipping = None
+    temp_billing = None
     order = models.ForeignKey(
         'order.Order',
         on_delete=models.CASCADE,
@@ -24,10 +26,67 @@ class Source(AbstractSource, BasePayment):
     shipping_method_code = models.CharField(max_length=100, null=True, blank=True)
 
     def get_success_url(self):
-        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:payment-details', kwargs={"status": "success"}))
+        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:payment'))
 
     def get_failure_url(self):
-        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:payment-details', kwargs={"status": "failure"}))
+        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:payment'))
+
+
+    def get_shipping_address(self):
+        if self.temp_shipping:
+            return {
+                "first_name": self.temp_shipping.first_name,
+                "last_name": self.temp_shipping.last_name,
+                "address_1": self.temp_shipping.line1,
+                "address_2": self.temp_shipping.line2,
+                "city": self.temp_shipping.line4,
+                "postcode": self.temp_shipping.postcode,
+                "country_code": self.temp_shipping.country.iso_3166_1_a2,
+                "country_area": self.temp_shipping.state,
+                "phone_number": self.temp_shipping.phone_number,
+                "email": None
+            }
+        else:
+            return {
+                "first_name": self.shipping_address.first_name,
+                "last_name": self.shipping_address.last_name,
+                "address_1": self.shipping_address.line1,
+                "address_2": self.shipping_address.line2,
+                "city": self.shipping_address.line4,
+                "postcode": self.shipping_address.postcode,
+                "country_code": self.shipping_address.country.iso_3166_1_a2,
+                "country_area": self.shipping_address.state,
+                "phone_number": self.shipping_address.phone_number,
+                "email": None if not self.order else self.order.guest_email
+            }
+
+    def get_billing_address(self):
+        if self.temp_billing:
+            return {
+                "first_name": self.temp_billing.first_name,
+                "last_name": self.temp_billing.last_name,
+                "address_1": self.temp_billing.line1,
+                "address_2": self.temp_billing.line2,
+                "city": self.temp_billing.line4,
+                "postcode": self.temp_billing.postcode,
+                "country_code": self.temp_billing.country.iso_3166_1_a2,
+                "country_area": self.temp_billing.state,
+                "phone_number": self.temp_billing.phone_number,
+                "email": None
+            }
+        else:
+            return {
+                "first_name": self.billing_address.first_name,
+                "last_name": self.billing_address.last_name,
+                "address_1": self.billing_address.line1,
+                "address_2": self.billing_address.line2,
+                "city": self.billing_address.line4,
+                "postcode": self.billing_address.postcode,
+                "country_code": self.billing_address.country.iso_3166_1_a2,
+                "country_area": self.billing_address.state,
+                "phone_number": self.billing_address.phone_number,
+                "email": None if not self.order else self.order.guest_email
+            }
 
     def allocate(self, amount, reference='', status=''):
         """

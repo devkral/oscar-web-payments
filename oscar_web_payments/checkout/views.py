@@ -1,5 +1,7 @@
 from oscar.apps.checkout.views import PaymentDetailsView as CorePaymentDetailsView
 from oscar.apps.checkout.views import PaymentMethodView as CorePaymentMethodView
+
+from oscar.apps.checkout import signals
 from oscar.apps.checkout.exceptions import FailedPreCondition
 from oscar.apps.payment.exceptions import RedirectRequired, UnableToTakePayment, UserCancelled
 
@@ -60,22 +62,20 @@ class PaymentMethodView(CorePaymentMethodView):
             raise FailedPreCondition(reverse('checkout:payment-method'), message="Invalid Payment Method")
 
 class PaymentDetailsView(CorePaymentDetailsView):
-    def post(self, request, *args, status=None, **kwargs):
+    payment = False
+    def post(self, request, *args, **kwargs):
         # We use a custom parameter to indicate if this is an attempt to place
         # an order (normally from the preview page).  Without this, we assume a
         # payment form is being submitted from the payment details view. In
         # this case, the form needs validating and the order preview shown.
 
-        if status:
-            if status != "failure":
-                return self.handle_place_order_submission(request)
-            try:
-                self.request.session.pop("paymentid")
-            except KeyError:
-                pass
+        if self.payment:
+            return self.handle_place_order_submission(request)
         return self.handle_payment_details_submission(request)
 
     def get(self, request, *args, **kwargs):
+        if self.payment:
+            return self.handle_place_order_submission(request)
         return self.handle_payment_details_submission(request)
 
     def dispatch(self, request, *args, **kwargs):
@@ -152,12 +152,11 @@ class PaymentDetailsView(CorePaymentDetailsView):
 
         source_type = SourceType.objects.get_or_create(defaults={"name": self.request.session["payment_method"]}, code=self.request.session["payment_method"])[0]
         try:
-            source = Source.objects.get(id=self.request.session["paymentid"], basket=basket)
+            source = Source.objects.get(id=self.request.session["paymentid"])
         except (ObjectDoesNotExist, KeyError):
             source = Source.objects.create(
                 source_type=source_type,
-                basket=basket,
-                currency="EUR",
+                currency=basket.currency,
                 total=order_total.incl_tax,
                 captured_amount=order_total.incl_tax,
             )
@@ -165,6 +164,7 @@ class PaymentDetailsView(CorePaymentDetailsView):
 
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
             del self.request.session["paymentid"]
+            self.restore_frozen_basket()
             return self.submit(user, basket, shipping_address, shipping_method,
                                shipping_charge, billing_address, order_total,
                                payment_kwargs=payment_kwargs, order_kwargs=order_kwargs)
@@ -174,9 +174,9 @@ class PaymentDetailsView(CorePaymentDetailsView):
             source.temp_tax=order_total.tax,
             source.temp_delivery=shipping_charge
             try:
-                form = source.get_form(data=request.POST)
+                form = source.get_form(data=self.request.POST)
                 if source.status not in [PaymentStatus.CONFIRMED, PaymentStatus.PREAUTH]:
-                    return self.render_preview(request, paymentform=form)
+                    return self.render_payment_details(self.request, paymentform=form)
             except web_payments.RedirectNeeded as e:
                 # Redirect required (eg PayPal, 3DS)
                 logger.info("Order #%s: redirecting to %s", order_number, e.args[0])

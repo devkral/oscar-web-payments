@@ -1,6 +1,10 @@
 {% extends "checkout/checkout.html" %}
 {% load i18n %}
 
+{% block checkout_nav %}
+    {% include 'checkout/nav.html' with step=3 %}
+{% endblock %}
+{% block shipping_address %}{% endblock %}
 {% block payment_method %}
   <form action="{% url 'checkout:payment-method' %}" class="form-stacked" method="POST">
       {% csrf_token %}
@@ -10,3 +14,4 @@
 {% endblock %}
 
 {% block payment_details %}{% endblock %}
+{% block order_contents %}{% endblock %}

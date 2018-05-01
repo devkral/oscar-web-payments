@@ -33,13 +33,13 @@ class CheckoutApplication(app.CheckoutApplication):
                 self.payment_method_view.as_view(), name='payment-method'),
             url(r'payment-details/$',
                 self.payment_details_view.as_view(), name='payment-details'),
-            url(r'payment-details/(?P<status>\w+)/$',
-                self.payment_details_view.as_view(), name='payment-details'),
 
             # Preview and thankyou
             url(r'preview/$',
                 self.payment_details_view.as_view(preview=True),
                 name='preview'),
+            url(r'payment/$',
+                self.payment_details_view.as_view(payment=True, preview=False), name='payment'),
             url(r'thank-you/$', self.thankyou_view.as_view(),
                 name='thank-you'),
         ]
