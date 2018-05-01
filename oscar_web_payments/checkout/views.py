@@ -107,6 +107,8 @@ class PaymentDetailsView(CorePaymentDetailsView):
         basket.submit()
         source.order = order
         source.save()
+        # forget payment id
+        del self.request.session["paymentid"]
         return self.handle_successful_order(order)
 
     def submit(self, user, basket, shipping_address, shipping_method,
@@ -126,11 +128,12 @@ class PaymentDetailsView(CorePaymentDetailsView):
                       "contact customer services if this problem persists")
 
         source_type = SourceType.objects.get_or_create(defaults={"name": self.request.session["payment_method"]}, code=self.request.session["payment_method"])[0]
+        # order != null is finished payment
         source, created = Source.objects.get_or_create(defaults={"source_type": source_type,
                 "currency": basket.currency,
                 "total": order_total.incl_tax,
                 "captured_amount": order_total.incl_tax
-            }, id=self.request.session["paymentid"])
+            }, id=self.request.session.get("paymentid", None), order=None)
         if created:
             self.request.session["paymentid"] = source.id
 
