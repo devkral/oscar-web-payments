@@ -165,6 +165,7 @@ OSCAR_ALLOW_ANON_CHECKOUT = True
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = 'static/'
 
 PAYMENT_MODEL = 'payment.Source'
 PAYMENT_HOST = 'localhost:8000'

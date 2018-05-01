@@ -4,7 +4,7 @@ from setuptools.command.test import test as TestCommand
 import os
 import sys
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'demo.settings.test')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'demo.settings')
 
 DJANGO_VERSIONS="django>=1.11"
 
@@ -17,8 +17,8 @@ PACKAGES = [
 REQUIREMENTS = [
     'django-oscar>=1.5,<2.0',
     'django>=1.11',
-    #'wtforms-django2',
-    'web-payments-connector>=2.4<3.0'
+    'wtforms-django-alex>=0.2',
+    'web-payments-connector>=2.4<4.0a'
 ]
 
 TEST_REQUIREMENTS = [
@@ -88,7 +88,4 @@ setup(
       cmdclass={
         'test': PyTest},
       tests_require=TEST_REQUIREMENTS,
-      dependency_links=[
-        "git+https://github.com/devkral/wtforms-django.git#branch=alex"
-      ],
       zip_safe=False)
