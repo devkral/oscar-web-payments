@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _
+from django.conf import settings
 #from django.db.models import Max
 from oscar.apps.payment.abstract_models import AbstractSource
 from web_payments.django.models import BasePayment
@@ -27,10 +28,9 @@ class Source(AbstractSource, BasePayment):
     shipping_method_code = models.CharField(max_length=100, null=True, blank=True)
 
     def get_success_url(self):
-        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:payment'))
+        return "{}://{}{}".format(settings.PAYMENT_PROTOCOL, Site.objects.get_current().domain, reverse('checkout:payment'))
 
-    def get_failure_url(self):
-        return "https://{}{}".format(Site.objects.get_current().domain, reverse('checkout:payment'))
+    get_failure_url = get_success_url
 
 
     def get_shipping_address(self):
