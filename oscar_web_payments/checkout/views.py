@@ -35,7 +35,6 @@ class PaymentMethodView(CorePaymentMethodView):
     template_name = 'checkout/payment_method.html'
     def get_context_data(self, **kwargs):
         ctx = super(PaymentMethodView, self).get_context_data(**kwargs)
-        minage = self.request.basket.minimum_age
         data = None
         if "payment_method" in self.request.session:
             data = {'variant': self.request.session["payment_method"]}
