@@ -27,7 +27,7 @@ from oscar.app import application
 
 
 urlpatterns = [
-    url(r'^i18n/', include('django.conf.urls.i18n')),
+    url('^i18n/', include('django.conf.urls.i18n')),
     url('^admin/', admin.site.urls),
     url('^payment/', include(web_payment_urls)),
     url(r'', include(application.urls)),
