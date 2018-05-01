@@ -6,12 +6,39 @@ Web payments integration in oscar
 Documentation
 =============
 
+Installation
+------------
+
+like django.oscar plus:
+
+* add oscar_web_payments.checkout oscar_web_payments.payment as get_core_apps arguments:
+
+  get_core_apps(['oscar_web_payments.checkout', 'oscar_web_payments.payment'])
+
+* set PAYMENT_MODEL to 'payment.Source'
+
+* set PAYMENT_VARIANTS_API with extra argument verbose_name per provider
+
+
+Example:
+--------
+
+PAYMENT_MODEL = 'payment.Source'
+PAYMENT_VARIANTS_API = {
+    'dummy_capture': ('web_payments_dummy.DummyProvider', {}, {"verbose_name": "dummy capturing"}),
+    'dummy_nocapture': ('web_payments_dummy.DummyProvider', {"capture": False}, {"verbose_name": "dummy not capturing"}),
+    'directwithform': ('web_payments_externalpayments.DirectPaymentProvider', {'skipform': False, 'confirm': True}, {"verbose_name": "direct payment with form"}),
+    'direct': ('web_payments_externalpayments.DirectPaymentProvider', {}, {"verbose_name": "direct payment"}),
+    'iban': ('web_payments_externalpayments.BankTransferProvider', {
+        "iban": "XX5604449899990000",
+        "bic": "DABAIE2D"}, {"verbose_name": "IBAN"}
+        ),
+    }
 
 TODO
 ====
 
 * Implementation
-* documentation
 * django-oscar integration
 
 Note: I use semantic versioning.
