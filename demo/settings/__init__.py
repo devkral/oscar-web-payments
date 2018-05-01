@@ -15,7 +15,7 @@ import os
 from oscar.defaults import *
 from oscar import OSCAR_MAIN_TEMPLATE_DIR
 from oscar import get_core_apps
-from oscar_web_payments import WEB_PAYMENTS_TEMPLATe_DIR
+from oscar_web_payments import WEB_PAYMENTS_TEMPLATE_DIR
 
 from django.contrib.messages import constants as message_constants
 
@@ -78,7 +78,7 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             os.path.join(BASE_DIR, "demo", 'templates'),
-            OSCAR_MAIN_TEMPLATE_DIR
+            WEB_PAYMENTS_TEMPLATE_DIR, OSCAR_MAIN_TEMPLATE_DIR
         ],
         'APP_DIRS': True,
         'OPTIONS': {
