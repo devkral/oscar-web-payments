@@ -1,8 +1,7 @@
 [run]
 branch = True
 omit =
-    oscar_web_payments/test_*.py
-    oscar_web_payments/*/test_*.py
+    tests/*
 source =
     oscar_web_payments
 
