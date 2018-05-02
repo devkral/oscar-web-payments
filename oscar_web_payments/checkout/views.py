@@ -174,6 +174,7 @@ class PaymentDetailsView(CorePaymentDetailsView):
             signals.pre_payment.send_robust(sender=self, view=self)
 
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
+            # TODO: error handling broken
             del self.request.session["paymentid"]
             self.restore_frozen_basket()
             return self.submit(user, basket, shipping_address, shipping_method,
