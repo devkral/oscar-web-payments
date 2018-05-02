@@ -14,6 +14,9 @@ class Source(AbstractSource, BasePayment):
     variant = None
     temp_shipping = None
     temp_billing = None
+    temp_tax = None
+    temp_delivery = None
+    temp_email = None
     order = models.ForeignKey(
         'order.Order',
         on_delete=models.CASCADE,
@@ -45,7 +48,7 @@ class Source(AbstractSource, BasePayment):
                 "country_code": self.temp_shipping.country.iso_3166_1_a2,
                 "country_area": self.temp_shipping.state,
                 "phone_number": self.temp_shipping.phone_number,
-                "email": None
+                "email": self.temp_email
             }
         else:
             return {
@@ -58,7 +61,7 @@ class Source(AbstractSource, BasePayment):
                 "country_code": self.shipping_address.country.iso_3166_1_a2,
                 "country_area": self.shipping_address.state,
                 "phone_number": self.shipping_address.phone_number,
-                "email": None if not self.order else self.order.guest_email
+                "email": self.temp_email if not self.order else self.order.guest_email
             }
 
     def get_billing_address(self):
@@ -73,7 +76,7 @@ class Source(AbstractSource, BasePayment):
                 "country_code": self.temp_billing.country.iso_3166_1_a2,
                 "country_area": self.temp_billing.state,
                 "phone_number": self.temp_billing.phone_number,
-                "email": None
+                "email": self.temp_email
             }
         else:
             return {
@@ -86,7 +89,7 @@ class Source(AbstractSource, BasePayment):
                 "country_code": self.billing_address.country.iso_3166_1_a2,
                 "country_area": self.billing_address.state,
                 "phone_number": self.billing_address.phone_number,
-                "email": None if not self.order else self.order.guest_email
+                "email": self.temp_email if not self.order else self.order.guest_email
             }
 
     def allocate(self, amount, reference='', status=''):

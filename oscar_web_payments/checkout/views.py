@@ -79,6 +79,7 @@ class PaymentDetailsView(CorePaymentDetailsView):
         return self.handle_payment_details_submission(request)
 
     def dispatch(self, request, *args, **kwargs):
+        # ensures payment_method is available in session
         if "payment_method" not in self.request.session:
             return redirect("checkout:payment-method")
         return super().dispatch(request, *args, **kwargs)
@@ -111,6 +112,17 @@ class PaymentDetailsView(CorePaymentDetailsView):
         del self.request.session["paymentid"]
         return self.handle_successful_order(order)
 
+    def build_submission(self, **kwargs):
+        submission = super().build_submission(**kwargs)
+        source_type = SourceType.objects.get_or_create(defaults={"name": self.request.session["payment_method"]}, code=self.request.session["payment_method"])[0]
+        submission["payment_kwargs"].update({
+            "source_type": source_type,
+            "currency": submission["basket"].currency,
+            "total": submission["order_total"].incl_tax,
+            "captured_amount": submission["order_total"].incl_tax,
+        })
+        return submission
+
     def submit(self, user, basket, shipping_address, shipping_method,
                shipping_charge, billing_address, order_total,
                payment_kwargs=None, order_kwargs=None):
@@ -127,18 +139,13 @@ class PaymentDetailsView(CorePaymentDetailsView):
                       "order - no payment has been taken.  Please "
                       "contact customer services if this problem persists")
 
-        source_type = SourceType.objects.get_or_create(defaults={"name": self.request.session["payment_method"]}, code=self.request.session["payment_method"])[0]
         try:
             source = Source.objects.get(id=self.request.session["paymentid"], order__isnull=True)
         except (ObjectDoesNotExist, KeyError):
-            # either session has nor paymentid (Keyerror)
+            # either session has not a paymentid (Keyerror)
             # or payment does not exist (ObjectDoesNotExist)
             # or payment is finished (ObjectDoesNotExist because of order exists)
-            source = Source.objects.create(source_type=source_type,
-                    currency=basket.currency,
-                    total=order_total.incl_tax,
-                    captured_amount=order_total.incl_tax
-                )
+            source = Source.objects.create(**payment_kwargs)
             self.request.session["paymentid"] = source.id
 
             # Taxes must be known at this point
@@ -176,8 +183,9 @@ class PaymentDetailsView(CorePaymentDetailsView):
         elif source.status in [PaymentStatus.INPUT, PaymentStatus.WAITING]:
             source.temp_shipping = shipping_address
             source.temp_billing = billing_address
-            source.temp_tax=order_total.tax,
-            source.temp_delivery=shipping_charge
+            source.temp_tax = order_total.tax,
+            source.temp_delivery = shipping_charge
+            source.temp_email = self.checkout_session.get_guest_email()
 
         order_number = self.checkout_session.get_order_number()
 
