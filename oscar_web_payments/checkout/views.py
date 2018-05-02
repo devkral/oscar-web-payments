@@ -128,13 +128,17 @@ class PaymentDetailsView(CorePaymentDetailsView):
                       "contact customer services if this problem persists")
 
         source_type = SourceType.objects.get_or_create(defaults={"name": self.request.session["payment_method"]}, code=self.request.session["payment_method"])[0]
-        # order != null is finished payment
-        source, created = Source.objects.get_or_create(defaults={"source_type": source_type,
-                "currency": basket.currency,
-                "total": order_total.incl_tax,
-                "captured_amount": order_total.incl_tax
-            }, id=self.request.session.get("paymentid", None), order=None)
-        if created:
+        try:
+            source = Source.objects.get(id=self.request.session["paymentid"], order__isnull=True)
+        except (ObjectDoesNotExist, KeyError):
+            # either session has nor paymentid (Keyerror)
+            # or payment does not exist (ObjectDoesNotExist)
+            # or payment is finished (ObjectDoesNotExist because of order exists)
+            source = Source.objects.create(source_type=source_type,
+                    currency=basket.currency,
+                    total=order_total.incl_tax,
+                    captured_amount=order_total.incl_tax
+                )
             self.request.session["paymentid"] = source.id
 
             # Taxes must be known at this point
