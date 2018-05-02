@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _
+
 from django.conf import settings
 #from django.db.models import Max
 from oscar.apps.payment.abstract_models import AbstractSource
@@ -8,14 +9,18 @@ from web_payments.django.models import BasePayment
 from web_payments import NotSupported
 from decimal import Decimal
 
-CENTS = Decimal("0.01")
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
+
+CENTI0 = Decimal("0.00")
 
 class Source(AbstractSource, BasePayment):
     variant = None
     temp_shipping = None
     temp_billing = None
-    temp_tax = None
-    temp_delivery = None
+    temp_extra = None
     temp_email = None
     order = models.ForeignKey(
         'order.Order',
@@ -24,14 +29,14 @@ class Source(AbstractSource, BasePayment):
         verbose_name=_("Order"), null=True)
     amount_refunded = models.DecimalField(
         _("Amount Refunded"), decimal_places=2, max_digits=12,
-        default=Decimal('0.0'))
+        default=CENTI0)
 
     currency = models.CharField(max_length=10)
 
     shipping_method_code = models.CharField(max_length=100, null=True, blank=True)
 
     def get_success_url(self):
-        return "{}://{}{}".format(settings.PAYMENT_PROTOCOL, Site.objects.get_current().domain, reverse('checkout:payment'))
+        return "{}://{}{}".format(getattr(settings, "PAYMENT_PROTOCOL", "https"), Site.objects.get_current().domain, reverse('checkout:payment'))
 
     get_failure_url = get_success_url
 
@@ -121,6 +126,15 @@ class Source(AbstractSource, BasePayment):
             AbstractTransaction.REFUND, amount, reference, status)
     refund.alters_data = True
 
+    def get_payment_extra(self):
+        if self.temp_extra:
+            return self.temp_extra
+        else:
+            return {
+                "tax": self.order.total_incl_tax-self.order.total_excl_tax if self.order else CENTI0,
+                "delivery": self.order.shipping_incl_tax if self.order else CENTI0
+            }
+
     @property
     def variant(self):
         return self.source_type.code
@@ -131,11 +145,11 @@ class Source(AbstractSource, BasePayment):
 
     @property
     def amount_allocated(self):
-        return self.total.quantize(CENTS)
+        return self.total.quantize(CENTI0)
 
     @property
     def amount_debited(self):
-        return self.captured_amount.quantize(CENTS)
+        return self.captured_amount.quantize(CENTI0)
 
     @property
     def balance(self):

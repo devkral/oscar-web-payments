@@ -140,11 +140,10 @@ class PaymentDetailsView(CorePaymentDetailsView):
                       "contact customer services if this problem persists")
 
         try:
-            source = Source.objects.get(id=self.request.session["paymentid"], order__isnull=True)
+            source = Source.objects.get(id=self.request.session["paymentid"])
         except (ObjectDoesNotExist, KeyError):
             # either session has not a paymentid (Keyerror)
             # or payment does not exist (ObjectDoesNotExist)
-            # or payment is finished (ObjectDoesNotExist because of order exists)
             source = Source.objects.create(**payment_kwargs)
             self.request.session["paymentid"] = source.id
 
@@ -183,11 +182,14 @@ class PaymentDetailsView(CorePaymentDetailsView):
         elif source.status in [PaymentStatus.INPUT, PaymentStatus.WAITING]:
             source.temp_shipping = shipping_address
             source.temp_billing = billing_address
-            source.temp_tax = order_total.tax,
-            source.temp_delivery = shipping_charge
+            source.temp_extra = {"tax": order_total.tax, "delivery": shipping_charge}
             source.temp_email = self.checkout_session.get_guest_email()
 
         order_number = self.checkout_session.get_order_number()
+
+        # is finished but for whatever reason still on this page
+        if source.order:
+            return self.handle_successful_order(source.order)
 
         try:
             if self.request.method == "GET":
