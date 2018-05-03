@@ -1,5 +1,6 @@
 
 from oscar.apps.checkout import app
+from web_payments.django import urls as web_payment_urls
 from . import views
 
 try:
@@ -33,13 +34,16 @@ class CheckoutApplication(app.CheckoutApplication):
                 self.payment_method_view.as_view(), name='payment-method'),
             url(r'payment-details/$',
                 self.payment_details_view.as_view(), name='payment-details'),
+            url(r'payment/$',
+                self.payment_details_view.as_view(payment=True, preview=False), name='payment'),
+
+            # bank facing payment views
+            url('^payment-process/', include(web_payment_urls)),
 
             # Preview and thankyou
             url(r'preview/$',
                 self.payment_details_view.as_view(preview=True),
                 name='preview'),
-            url(r'payment/$',
-                self.payment_details_view.as_view(payment=True, preview=False), name='payment'),
             url(r'thank-you/$', self.thankyou_view.as_view(),
                 name='thank-you'),
         ]
