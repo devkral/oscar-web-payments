@@ -35,23 +35,22 @@ logger = get_class('checkout.views', 'logger')
 
 class PaymentMethodView(CorePaymentMethodView):
     template_name = 'checkout/payment_method.html'
+    pre_conditions += ['check_valid_method']
     def get_context_data(self, **kwargs):
         ctx = super(PaymentMethodView, self).get_context_data(**kwargs)
         data = None
-        if "payment_method" in self.request.session:
-            data = {'variant': self.request.session["payment_method"]}
+        if self.checkout_session.payment_method():
+            data = {'variant': self.checkout_session.payment_method()}
         # see own forms
         ctx['form'] = SelectPaymentForm(data)
         return ctx
-    def get_pre_conditions(self, request):
-        return super(PaymentMethodView, self).get_pre_conditions(request).copy() + ['check_valid_method']
 
     def get(self, request, *args, **kwargs):
         ctx = self.get_context_data(**kwargs)
         return self.render_to_response(ctx)
 
     def post(self, request, *args, **kwargs):
-        request.session["payment_method"] = request.POST["variant"]
+        self.checkout_session.pay_by(request.POST["variant"])
         return self.get_success_response()
 
     def check_valid_method(self, request):
@@ -63,6 +62,13 @@ class PaymentMethodView(CorePaymentMethodView):
 
 class PaymentDetailsView(CorePaymentDetailsView):
     payment = False
+    pre_conditions += ['check_valid_method']
+
+    def check_valid_method(self, request):
+        if "payment_method" not in request.session:
+            raise FailedPreCondition(reverse('checkout:payment-method'), message="Invalid Payment Method")
+
+
     def post(self, request, *args, **kwargs):
         # We use a custom parameter to indicate if this is an attempt to place
         # an order (normally from the preview page).  Without this, we assume a
@@ -78,15 +84,10 @@ class PaymentDetailsView(CorePaymentDetailsView):
             return self.handle_place_order_submission(request)
         return self.handle_payment_details_submission(request)
 
-    def dispatch(self, request, *args, **kwargs):
-        # ensures payment_method is available in session
-        if "payment_method" not in self.request.session:
-            return redirect("checkout:payment-method")
-        return super().dispatch(request, *args, **kwargs)
-
     def get_context_data(self, **kwargs):
         ctx = super(PaymentDetailsView, self).get_context_data(**kwargs)
-        ctx["payment_method"] = settings.PAYMENT_VARIANTS_API[self.request.session["payment_method"]][2]["verbose_name"]
+        extra = Source.get_provider(self.checkout_session.payment_method()).extra
+        ctx["payment_method"] = extra.get("verbose_name", extra["name"])
         return ctx
 
     def handle_order_placement(self, order_number, user, basket,
@@ -108,13 +109,11 @@ class PaymentDetailsView(CorePaymentDetailsView):
         basket.submit()
         source.order = order
         source.save()
-        # forget payment id
-        del self.request.session["paymentid"]
         return self.handle_successful_order(order)
 
     def build_submission(self, **kwargs):
         submission = super().build_submission(**kwargs)
-        source_type = SourceType.objects.get_or_create(defaults={"name": self.request.session["payment_method"]}, code=self.request.session["payment_method"])[0]
+        source_type = SourceType.objects.get_or_create(defaults={"name": self.checkout_session.payment_method()}, code=self.checkout_session.payment_method())[0]
         submission["payment_kwargs"].update({
             "source_type": source_type,
             "currency": submission["basket"].currency,
@@ -140,12 +139,16 @@ class PaymentDetailsView(CorePaymentDetailsView):
                       "contact customer services if this problem persists")
 
         try:
-            source = Source.objects.get(id=self.request.session["paymentid"])
-        except (ObjectDoesNotExist, KeyError):
-            # either session has not a paymentid (Keyerror)
+            pay_id = self.checkout_session.payment_id()
+            # id=None seems to match some cases, so be sure
+            if not pay_id:
+                raise ObjectDoesNotExist()
+            source = Source.objects.get(id=pay_id)
+        except ObjectDoesNotExist:
+            # either session has not a paymentid (ObjectDoesNotExist)
             # or payment does not exist (ObjectDoesNotExist)
             source = Source.objects.create(**payment_kwargs)
-            self.request.session["paymentid"] = source.id
+            self.checkout_session.set_payment_id(source.id)
 
             # Taxes must be known at this point
             assert basket.is_tax_known, (
@@ -174,12 +177,10 @@ class PaymentDetailsView(CorePaymentDetailsView):
             signals.pre_payment.send_robust(sender=self, view=self)
 
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
-            # TODO: error handling broken
-            del self.request.session["paymentid"]
+            self.checkout_session.set_payment_id(None)
             self.restore_frozen_basket()
-            return self.submit(user, basket, shipping_address, shipping_method,
-                               shipping_charge, billing_address, order_total,
-                               payment_kwargs=payment_kwargs, order_kwargs=order_kwargs)
+            return self.render_preview(
+                self.request, error=source.message, **payment_kwargs)
         elif source.status in [PaymentStatus.INPUT, PaymentStatus.WAITING]:
             source.temp_shipping = shipping_address
             source.temp_billing = billing_address
