@@ -2,7 +2,7 @@
 {% load i18n %}
 
 {% block payment_details_content %}
-  {% url 'checkout:payment' as selfurl %}
+  {% url 'checkout:payment-details' as selfurl %}
   {% if paymentform.action == "" or paymentform.action == selfurl %}
   <form action="
     {% url 'checkout:payment' %}" class="form-stacked" method="{{ paymentform.method }}">

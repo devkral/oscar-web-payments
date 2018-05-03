@@ -36,7 +36,7 @@ class Source(AbstractSource, BasePayment):
     shipping_method_code = models.CharField(max_length=100, null=True, blank=True)
 
     def get_success_url(self):
-        return "{}://{}{}".format(getattr(settings, "PAYMENT_PROTOCOL", "https"), Site.objects.get_current().domain, reverse('checkout:payment'))
+        return "{}://{}{}".format(getattr(settings, "PAYMENT_PROTOCOL", "https"), Site.objects.get_current().domain, reverse('checkout:payment-details'))
 
     get_failure_url = get_success_url
 

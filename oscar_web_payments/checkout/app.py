@@ -33,9 +33,7 @@ class CheckoutApplication(app.CheckoutApplication):
             url(r'payment-method/$',
                 self.payment_method_view.as_view(), name='payment-method'),
             url(r'payment-details/$',
-                self.payment_details_view.as_view(), name='payment-details'),
-            url(r'payment/$',
-                self.payment_details_view.as_view(payment=True, preview=False), name='payment'),
+                self.payment_details_view.as_view(payment=True), name='payment-details'),
 
             # bank facing payment views
             url('^payment-process/', include(web_payment_urls)),
