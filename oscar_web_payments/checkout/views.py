@@ -65,9 +65,10 @@ class PaymentDetailsView(CorePaymentDetailsView):
     pre_conditions += ['check_valid_method']
 
     def check_valid_method(self, request):
-        if "payment_method" not in request.session:
+        try:
+            Source.get_provider(self.checkout_session.payment_method())
+        except ValueError:
             raise FailedPreCondition(reverse('checkout:payment-method'), message="Invalid Payment Method")
-
 
     def post(self, request, *args, **kwargs):
         # We use a custom parameter to indicate if this is an attempt to place
