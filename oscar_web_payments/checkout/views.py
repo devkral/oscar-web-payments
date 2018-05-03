@@ -140,13 +140,9 @@ class PaymentDetailsView(CorePaymentDetailsView):
                       "contact customer services if this problem persists")
 
         try:
-            pay_id = self.checkout_session.payment_id()
-            # id=None seems to match some cases, so be sure
-            if not pay_id:
-                raise ObjectDoesNotExist()
-            source = Source.objects.get(id=pay_id)
+            source = Source.objects.get(id=self.checkout_session.payment_id())
         except ObjectDoesNotExist:
-            # either session has not a paymentid (ObjectDoesNotExist)
+            # either session has not a paymentid => None => ObjectDoesNotExist
             # or payment does not exist (ObjectDoesNotExist)
             source = Source.objects.create(**payment_kwargs)
             self.checkout_session.set_payment_id(source.id)
