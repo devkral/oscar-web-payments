@@ -14,7 +14,21 @@
 {% endblock %}
 
 {% block place_order %}
-    <form method="get" action="{% url 'checkout:payment-details' %}" id="place_order_form">
+  {% if paymentform %}
+    {% url 'checkout:payment-details' as detailsurl %}
+    {% if paymentform.action == "" or paymentform.action == detailsurl %}
+    <form action="{{detailsurl}}" class="form-stacked" method="{{ paymentform.method }}">
+      {# form doesn't leak token in these cases #}
+      {% csrf_token %}
+    {% else %}
+    <form action="{{ paymentform.action }}" class="form-stacked" method="{{ paymentform.method }}">
+    {% endif %}
+        {% for field in paymentform %}
+          {% include "partials/wtform_field.html" with field=field %}
+        {% endfor %}
+  {% else %}
+    <form method="get" action="{{redirecturl}}" id="place_order_form">
+  {% endif %}
         <div class="form-group clearfix">
             <div class="row">
                 <div class="col-sm-3 col-sm-offset-9">

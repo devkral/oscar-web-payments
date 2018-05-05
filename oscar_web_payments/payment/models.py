@@ -22,6 +22,8 @@ class Source(AbstractSource, BasePayment):
     temp_billing = None
     temp_extra = None
     temp_email = None
+    temp_form = None
+
     order = models.ForeignKey(
         'order.Order',
         on_delete=models.CASCADE,
@@ -57,16 +59,16 @@ class Source(AbstractSource, BasePayment):
             }
         else:
             return {
-                "first_name": self.shipping_address.first_name,
-                "last_name": self.shipping_address.last_name,
-                "address_1": self.shipping_address.line1,
-                "address_2": self.shipping_address.line2,
-                "city": self.shipping_address.line4,
-                "postcode": self.shipping_address.postcode,
-                "country_code": self.shipping_address.country.iso_3166_1_a2,
-                "country_area": self.shipping_address.state,
-                "phone_number": self.shipping_address.phone_number,
-                "email": self.temp_email if not self.order else self.order.guest_email
+                "first_name": self.order.shipping_address.first_name,
+                "last_name": self.order.shipping_address.last_name,
+                "address_1": self.order.shipping_address.line1,
+                "address_2": self.order.shipping_address.line2,
+                "city": self.order.shipping_address.line4,
+                "postcode": self.order.shipping_address.postcode,
+                "country_code": self.order.shipping_address.country.iso_3166_1_a2,
+                "country_area": self.order.shipping_address.state,
+                "phone_number": self.order.shipping_address.phone_number,
+                "email": self.order.guest_email
             }
 
     def get_billing_address(self):
@@ -85,16 +87,16 @@ class Source(AbstractSource, BasePayment):
             }
         else:
             return {
-                "first_name": self.billing_address.first_name,
-                "last_name": self.billing_address.last_name,
-                "address_1": self.billing_address.line1,
-                "address_2": self.billing_address.line2,
-                "city": self.billing_address.line4,
-                "postcode": self.billing_address.postcode,
-                "country_code": self.billing_address.country.iso_3166_1_a2,
-                "country_area": self.billing_address.state,
-                "phone_number": self.billing_address.phone_number,
-                "email": self.temp_email if not self.order else self.order.guest_email
+                "first_name": self.order.billing_address.first_name,
+                "last_name": self.order.billing_address.last_name,
+                "address_1": self.order.billing_address.line1,
+                "address_2": self.order.billing_address.line2,
+                "city": self.order.billing_address.line4,
+                "postcode": self.order.billing_address.postcode,
+                "country_code": self.order.billing_address.country.iso_3166_1_a2,
+                "country_area": self.order.billing_address.state,
+                "phone_number": self.order.billing_address.phone_number,
+                "email": self.order.guest_email
             }
 
     def allocate(self, amount, reference='', status=''):
