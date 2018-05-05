@@ -19,6 +19,7 @@
             <h2>{% trans "Payment" %}</h2>
         </div>
         <div class="well well-success">
+            {{payment_method}}
             <a href="{% url 'checkout:payment-method' %}" class="pull-right">
                 {% trans "Change" %}
             </a>
@@ -32,7 +33,7 @@
   {% if paymentform %}
     {% url 'checkout:payment-details' as detailsurl %}
     {% if paymentform.action == "" or paymentform.action == detailsurl %}
-    <form action="{{detailsurl}}" class="form-stacked" method="{{ paymentform.method }}">
+    <form action="{{detailsurl}}" class="form-stacked" method="POST">
       {# form doesn't leak token in these cases #}
       {% csrf_token %}
     {% else %}
