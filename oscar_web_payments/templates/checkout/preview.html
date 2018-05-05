@@ -31,9 +31,8 @@
 
 {% block place_order %}
   {% if paymentform %}
-    {% url 'checkout:payment-details' as detailsurl %}
-    {% if paymentform.action == "" or paymentform.action == detailsurl %}
-    <form action="{{detailsurl}}" class="form-stacked" method="POST">
+    {% if is_local_url %}
+    <form action="{% url 'checkout:payment-details' %}" class="form-stacked" method="POST">
       {# form doesn't leak token in these cases #}
       {% csrf_token %}
     {% else %}

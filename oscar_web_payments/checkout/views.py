@@ -3,16 +3,12 @@ from oscar.apps.checkout.views import PaymentMethodView as CorePaymentMethodView
 
 from oscar.apps.checkout import signals
 from oscar.apps.checkout.exceptions import FailedPreCondition
-from oscar.apps.payment.exceptions import RedirectRequired, UnableToTakePayment, UserCancelled
 
 from django.core.urlresolvers import reverse, reverse_lazy
 from django.utils.translation import ugettext_lazy as _
-from django.db import models
+from django.http.request import split_domain_port, validate_host
 from django.core.exceptions import ObjectDoesNotExist
-from django.views.generic import TemplateView
-from django.contrib import messages
 from django.conf import settings
-from django.contrib.sites.shortcuts import get_current_site
 from django.shortcuts import redirect
 
 from oscar.core.loading import get_class, get_classes, get_model
@@ -22,8 +18,6 @@ from .forms import SelectPaymentForm
 import web_payments
 from web_payments import PaymentStatus
 
-from time import sleep
-import logging
 
 SourceType = get_model('payment', 'SourceType')
 Source = get_model('payment', 'Source')
@@ -32,6 +26,8 @@ RedirectRequired, UnableToTakePayment, PaymentError \
     = get_classes('payment.exceptions', ['RedirectRequired',
                                          'UnableToTakePayment',
                                          'PaymentError'])
+
+PassedSkipCondition = get_class('checkout.exceptions', 'PassedSkipCondition')
 
 logger = get_class('checkout.views', 'logger')
 
@@ -67,14 +63,30 @@ class PaymentMethodView(CorePaymentMethodView):
         return redirect('checkout:preview')
 
 class PaymentDetailsView(CorePaymentDetailsView):
-    payment = False
     pre_conditions = CorePaymentDetailsView.pre_conditions + ['check_valid_method']
+
+    _allowed_hosts = settings.ALLOWED_HOSTS
+    if settings.DEBUG and not _allowed_hosts:
+        _allowed_hosts = ['localhost', '127.0.0.1', '[::1]']
 
     def check_valid_method(self, request):
         try:
             Source.get_provider(self.checkout_session.payment_method())
         except ValueError:
             raise FailedPreCondition(reverse('checkout:payment-method'), message="Invalid Payment Method")
+
+    #def check_order_is_created_already(self, request):
+    #    if request.basket.is_empty:
+    #        return
+    #    try:
+    #        source = Source.objects.get(id=self.checkout_session.payment_id())
+    #    except ObjectDoesNotExist:
+    #        return
+    #    if source.order:
+    #        raise PassedSkipCondition(
+    #            url=self.handle_successful_order(source.order)
+    #        )
+
 
     def post(self, request, *args, **kwargs):
         # We use a custom parameter to indicate if this is an attempt to place
@@ -94,19 +106,23 @@ class PaymentDetailsView(CorePaymentDetailsView):
     def handle_place_order_submission(self, request):
         submission = self.build_submission()
         source_type = SourceType.objects.get_or_create(defaults={"name": self.checkout_session.payment_method()}, code=self.checkout_session.payment_method())[0]
-        submission["payment_kwargs"]["source"] = Source.objects.get_or_create(defaults={
+        source = Source.objects.get_or_create(defaults={
             "source_type": source_type,
             "currency": submission["basket"].currency,
             "total": submission["order_total"].incl_tax,
             "captured_amount": submission["order_total"].incl_tax
         }, id=self.checkout_session.payment_id())[0]
-        submission["payment_kwargs"]["source"].temp_shipping = submission["shipping_address"]
-        submission["payment_kwargs"]["source"].temp_billing = submission["billing_address"]
-        submission["payment_kwargs"]["source"].temp_extra = {
+        if source.order:
+            return self.handle_successful_order(source.order)
+
+        source.temp_shipping = submission["shipping_address"]
+        source.temp_billing = submission["billing_address"]
+        source.temp_extra = {
             "tax": submission["order_total"].incl_tax-submission["order_total"].excl_tax,
             "delivery": submission["shipping_charge"].incl_tax
         }
-        submission["payment_kwargs"]["source"].temp_email = submission['order_kwargs']['guest_email']
+        source.temp_email = submission['order_kwargs']['guest_email']
+        submission["payment_kwargs"]["source"] = source
         return self.submit(**submission)
 
     def handle_payment_details_submission(self, request):
@@ -140,6 +156,14 @@ class PaymentDetailsView(CorePaymentDetailsView):
         ctx = super(PaymentDetailsView, self).get_context_data(**kwargs)
         extra = Source.get_provider(self.checkout_session.payment_method()).extra
         ctx["payment_method"] = extra.get("verbose_name", extra["name"])
+        host = ctx.get("paymentform", None)
+        if host:
+            host = host.action
+        ctx["is_local_url"] = host == ""
+        if host is not None and not ctx["is_local_url"]: #try harder
+            domain = split_domain_port(host)[0]
+            if domain and validate_host(domain, self._allowed_hosts):
+                ctx["is_local_url"] = True
         return ctx
 
     def handle_payment(self, order_number, total, source, **kwargs):
