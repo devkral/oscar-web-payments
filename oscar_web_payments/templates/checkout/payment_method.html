@@ -9,7 +9,7 @@
   <form action="{% url 'checkout:payment-method' %}" class="form-stacked" method="POST">
       {% csrf_token %}
       {% include "partials/form_fields.html" %}
-      <button type="submit" value="{% trans "Proceed" %}" class="btn btn-primary btn-large">{% trans "Proceed" %}</button>
+      <button type="submit" value="{% trans "Proceed" %}" class="btn btn-primary btn-large">{% trans "Continue" %}</button>
   </form>
 {% endblock %}
 

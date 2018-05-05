@@ -87,34 +87,16 @@ class PaymentDetailsView(CorePaymentDetailsView):
     #            url=self.handle_successful_order(source.order)
     #        )
 
-
-    def post(self, request, *args, **kwargs):
-        # We use a custom parameter to indicate if this is an attempt to place
-        # an order (normally from the preview page).  Without this, we assume a
-        # payment form is being submitted from the payment details view. In
-        # this case, the form needs validating and the order preview shown.
-
-        if not self.preview:
-            return self.handle_place_order_submission(request)
-        return self.handle_payment_details_submission(request)
-
-    def get(self, request, *args, **kwargs):
-        if not self.preview:
-            return self.handle_place_order_submission(request)
-        return self.handle_payment_details_submission(request)
-
     def handle_place_order_submission(self, request):
         submission = self.build_submission()
         source_type = SourceType.objects.get_or_create(defaults={"name": self.checkout_session.payment_method()}, code=self.checkout_session.payment_method())[0]
-        source = Source.objects.get_or_create(defaults={
+        source = Source.objects.create(**{
             "source_type": source_type,
             "currency": submission["basket"].currency,
             "total": submission["order_total"].incl_tax,
             "captured_amount": submission["order_total"].incl_tax
-        }, id=self.checkout_session.payment_id())[0]
-        if source.order:
-            return self.handle_successful_order(source.order)
-
+        })
+        self.checkout_session.set_payment_id(source.id)
         source.temp_shipping = submission["shipping_address"]
         source.temp_billing = submission["billing_address"]
         source.temp_extra = {
@@ -128,13 +110,7 @@ class PaymentDetailsView(CorePaymentDetailsView):
     def handle_payment_details_submission(self, request):
         source_type = SourceType.objects.get_or_create(defaults={"name": self.checkout_session.payment_method()}, code=self.checkout_session.payment_method())[0]
         submission = self.build_submission()
-        source = Source.objects.create(**{
-            "source_type": source_type,
-            "currency": submission["basket"].currency,
-            "total": submission["order_total"].incl_tax,
-            "captured_amount": submission["order_total"].incl_tax,
-        })
-        self.checkout_session.set_payment_id(source.id)
+        source = Source.objects.get(id=self.checkout_session.payment_id())
         source.temp_shipping = submission["shipping_address"]
         source.temp_billing = submission["billing_address"]
         source.temp_extra = {
@@ -147,10 +123,9 @@ class PaymentDetailsView(CorePaymentDetailsView):
         try:
             form = source.get_form()
         except web_payments.RedirectNeeded as e:
-            form = None
-            url = e.args[0]
+            return http.HttpResponseRedirect(e.args[0])
 
-        return self.render_preview(request, paymentform=form, redirecturl=url)
+        return self.render_preview(request, paymentform=source.temp_form)
 
     def get_context_data(self, **kwargs):
         ctx = super(PaymentDetailsView, self).get_context_data(**kwargs)

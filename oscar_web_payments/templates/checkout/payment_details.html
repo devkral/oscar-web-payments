@@ -2,30 +2,5 @@
 {% load i18n %}
 
 {% block payment_details_content %}
-  {% if is_local_url %}
-  <form action="{{ paymentform.action }}" class="form-stacked" method="POST">
-    {# form doesn't leak token in these cases #}
-    {% csrf_token %}
-  {% else %}
-  <form action="{{ paymentform.action }}" class="form-stacked" method="{{ paymentform.method }}">
-  {% endif %}
-
-    {% if paymentform.errors %}
-    <div class="alert alert-danger">
-        <strong>{% trans "Oops! We found some errors" %}</strong> - {% trans "please check the error messages below and try again" %}
-    </div>
-    {% endif %}
-
-    {% for field in source.temp_form %}
-      {% include "partials/wtform_field.html" with field=field %}
-    {% endfor %}
-
-    <div class="form-group clearfix">
-        <div class="row">
-            <div class="col-sm-3 col-sm-offset-9">
-                 <button id='place-order' type="submit" class="btn btn-primary btn-lg btn-block" data-loading-text="{% trans 'Submitting...' %}">{% trans "Place order" %}</button>
-            </div>
-        </div>
-    </div>
-  </form>
+  <a id="view_preview" href="{% url 'checkout:preview' %}" class="btn btn-primary btn-lg">{% trans "Continue" %}</a>
 {% endblock %}
