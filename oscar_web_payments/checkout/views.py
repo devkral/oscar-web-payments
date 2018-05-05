@@ -21,6 +21,7 @@ from web_payments import PaymentStatus
 
 
 SourceType = get_model('payment', 'SourceType')
+Basket = get_model('basket', 'Basket')
 Source = get_model('payment', 'Source')
 Order = get_model('order', 'Order')
 RedirectRequired, UnableToTakePayment, PaymentError \
@@ -29,6 +30,8 @@ RedirectRequired, UnableToTakePayment, PaymentError \
                                          'PaymentError'])
 
 PassedSkipCondition = get_class('checkout.exceptions', 'PassedSkipCondition')
+CheckoutSessionData = get_class(
+    'checkout.utils', 'CheckoutSessionData')
 
 logger = get_class('checkout.views', 'logger')
 
@@ -64,7 +67,23 @@ class PaymentMethodView(CorePaymentMethodView):
 
 
 class PaymentDetailsView(CorePaymentDetailsView):
-    pre_conditions = CorePaymentDetailsView.pre_conditions + ['check_valid_method']
+
+    pre_conditions = [
+        #'check_basket_is_not_empty',
+        #'check_basket_is_valid',
+        'check_valid_method',
+        'check_user_email_is_captured',
+        'check_shipping_data_is_captured']
+
+    #pre_conditions = CorePaymentDetailsView.pre_conditions + ['check_valid_method']
+
+    def check_basket_is_not_empty(self, request):
+        if self.preview: # or request.POST.get('action', '') == 'place_order'
+            super().check_basket_is_not_empty(request)
+
+    def check_basket_is_valid(self, request):
+        if self.preview: # or request.POST.get('action', '') == 'place_order'
+            super().check_basket_is_valid(request)
 
     def check_valid_method(self, request):
         try:
@@ -133,7 +152,9 @@ class PaymentDetailsView(CorePaymentDetailsView):
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
             self.restore_frozen_basket()
             return redirect("checkout:preview")
-        submission = self.build_submission()
+        basket = self.get_submitted_basket()
+        basket.strategy = self.request.basket.strategy
+        submission = self.build_submission(basket=basket)
 
         source.temp_shipping = submission["shipping_address"]
         source.temp_billing = submission["billing_address"]
