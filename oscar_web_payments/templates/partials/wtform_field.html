@@ -12,9 +12,25 @@
 
             {% block label %}
                 {% if not nolabel and field.type != 'BooleanField' %}
+                    {# django templates calls objects before evaluating fully, makes hack neccessary #}
+                    {% if style|default:"stacked" != 'stacked' %}
+                      {% if field.flags.required %}
+                        {% form_field field.label class="control-label col-sm-4 required" %}
+                      {% else %}
+                        {% form_field field.label class="control-label col-sm-4" %}
+                      {% endif %}
+                    {% else %}
+                      {% if field.flags.required %}
+                        {% form_field field.label class="control-label col-sm-4 required" %}
+                      {% else %}
+                        {% form_field field.label class="control-label col-sm-4" %}
+                      {% endif %}
+                    {% endif %}
+                    {% comment %}
                     <label for="{{ field.id }}" class="{% if style|default:"stacked" != 'stacked' %}col-sm-4{% endif%} control-label{% if field.flags.required %} required{% endif %}">
-                        {{ field.label.text|safe }}
+                        {{ field.label.text }}
                     </label>
+                    {% endcomment %}
                 {% endif %}
             {% endblock %}
 

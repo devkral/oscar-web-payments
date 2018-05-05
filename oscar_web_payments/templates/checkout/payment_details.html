@@ -5,7 +5,7 @@
   {% url 'checkout:payment-details' as selfurl %}
   {% if paymentform.action == "" or paymentform.action == selfurl %}
   <form action="
-    {% url 'checkout:payment' %}" class="form-stacked" method="{{ paymentform.method }}">
+    {% url 'checkout:payment-details' %}" class="form-stacked" method="{{ paymentform.method }}">
     {# form doesn't leak token in these cases #}
     {% csrf_token %}
   {% else %}
@@ -19,9 +19,7 @@
     {% endif %}
 
     {% for field in paymentform %}
-      {{field.label}}
-      {{field}}
-      {#{% include "partials/wtform_field.html" with field=field %}#}
+      {% include "partials/wtform_field.html" with field=field %}
     {% endfor %}
 
     <div class="form-group clearfix">

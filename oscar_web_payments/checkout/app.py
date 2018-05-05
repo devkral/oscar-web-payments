@@ -4,9 +4,10 @@ from web_payments.django import urls as web_payment_urls
 from . import views
 
 try:
+    from django.urls import include
     from django.urls import path_re as url
 except ImportError:
-    from django.conf.urls import url
+    from django.conf.urls import url, include
 
 class CheckoutApplication(app.CheckoutApplication):
     payment_method_view = views.PaymentMethodView

@@ -35,7 +35,7 @@ logger = get_class('checkout.views', 'logger')
 
 class PaymentMethodView(CorePaymentMethodView):
     template_name = 'checkout/payment_method.html'
-    pre_conditions += ['check_valid_method']
+    pre_conditions = CorePaymentMethodView.pre_conditions + ['check_valid_method']
     def get_context_data(self, **kwargs):
         ctx = super(PaymentMethodView, self).get_context_data(**kwargs)
         data = None
@@ -62,7 +62,7 @@ class PaymentMethodView(CorePaymentMethodView):
 
 class PaymentDetailsView(CorePaymentDetailsView):
     payment = False
-    pre_conditions += ['check_valid_method']
+    pre_conditions = CorePaymentDetailsView.pre_conditions + ['check_valid_method']
 
     def check_valid_method(self, request):
         try:
@@ -195,6 +195,8 @@ class PaymentDetailsView(CorePaymentDetailsView):
                 form = source.get_form()
             else:
                 form = source.get_form(data=self.request.POST)
+            for i in form:
+                print(i.label.text, type(i.label.text))
             if source.status not in [PaymentStatus.CONFIRMED, PaymentStatus.PREAUTH]:
                 return self.render_payment_details(self.request, paymentform=form)
         except web_payments.RedirectNeeded as e:
