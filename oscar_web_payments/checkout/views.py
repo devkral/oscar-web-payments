@@ -162,7 +162,10 @@ class PaymentDetailsView(CorePaymentDetailsView):
             raise RedirectRequired(reverse("checkout:payment-details"))
         if source.status not in [PaymentStatus.PREAUTH, PaymentStatus.CONFIRMED]:
             try:
-                source.temp_form = source.get_form(self.request.POST)
+                if "place_order" in self.request.POST:
+                    source.temp_form = source.get_form()
+                else:
+                    source.temp_form = source.get_form(self.request.POST)
             except web_payments.RedirectNeeded as e:
                 raise RedirectRequired(e.args[0])
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:

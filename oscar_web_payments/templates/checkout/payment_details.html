@@ -2,12 +2,15 @@
 {# inverted order: first preview, then payment #}
 {% load i18n %}
 
+{% block checkout_nav %}
+    {% include 'checkout/nav.html' with step=4 %}
+{% endblock %}
+
 
 {% block payment_details_content %}
-    {% if is_local_url%}
+    {% if is_local_url %}
     <form method="post" action="{% url 'checkout:preview' %}" id="place_order_form">
         {% csrf_token %}
-        <input type="hidden" name="action" value="place_order" />
     {% else %}
     <form method="{{source.temp_form.method}}" action="{{source.temp_form.action}}" id="place_order_form">
     {% endif %}
