@@ -33,13 +33,13 @@
 
 {% block place_order %}
   {# inverted #}
-  <form method="post" action="{% url 'checkout:preview' %}" id="place_order_form">
+  <form method="post" action="{% url 'checkout:payment-details' %}" id="place_order_form">
       {% csrf_token %}
       <input type="hidden" name="action" value="place_order" />
       <div class="form-group clearfix">
           <div class="row">
               <div class="col-sm-3 col-sm-offset-9">
-                   <button id='place-order' type="submit" class="btn btn-primary btn-lg btn-block">{% trans "Continue" %}</button>
+                   <button id='place-order' type="submit" class="btn btn-primary btn-lg btn-block" data-loading-text="{% trans 'Submitting...' %}">{% trans "Place order" %}</button>
               </div>
           </div>
       </div>

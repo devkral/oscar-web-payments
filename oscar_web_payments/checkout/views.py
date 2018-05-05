@@ -6,6 +6,7 @@ from oscar.apps.checkout.exceptions import FailedPreCondition
 
 from django.core.urlresolvers import reverse, reverse_lazy
 from django.utils.translation import ugettext_lazy as _
+from django import http
 from django.http.request import split_domain_port, validate_host
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
@@ -58,11 +59,12 @@ class PaymentMethodView(CorePaymentMethodView):
         if not form.is_valid():
             raise FailedPreCondition(reverse('checkout:payment-method'), message="Invalid Payment Method")
 
+    def get_success_response(self):
+        return redirect('checkout:preview')
+
+
 class PaymentDetailsView(CorePaymentDetailsView):
     pre_conditions = CorePaymentDetailsView.pre_conditions + ['check_valid_method']
-    # invert templates
-    template_name = 'checkout/preview.html'
-    template_name_preview = 'checkout/payment_details.html'
 
     def check_valid_method(self, request):
         try:
@@ -70,21 +72,25 @@ class PaymentDetailsView(CorePaymentDetailsView):
         except ValueError:
             raise FailedPreCondition(reverse('checkout:payment-method'), message="Invalid Payment Method")
 
-    def get(self, request, *args, **kwargs):
-        if not self.preview:
-            return super().get(request, *args, **kwargs)
+    def post(self, request, *args, **kwargs):
+        # Posting to payment-details isn't the right thing to do.  Form
+        # submissions should use the preview URL.
+        if self.preview:
+            return http.HttpResponseBadRequest()
+
+        # We use a custom parameter to indicate if this is an attempt to place
+        # an order (normally from the preview page).  Without this, we assume a
+        # payment form is being submitted from the payment details view. In
+        # this case, the form needs validating and the order preview shown.
+        if request.POST.get('action', '') == 'place_order':
+            return self.handle_place_order_submission(request)
         return self.handle_payment_details_submission(request)
 
-    def render_payment_details(self, request, **kwargs):
-        """
-        Show the payment details page
-
-        This method is useful if the submission from the payment details view
-        is invalid and needs to be re-rendered with form errors showing.
-        """
-        self.preview = True
-        ctx = self.get_context_data(**kwargs)
-        return self.render_to_response(ctx)
+    def get(self, request, *args, **kwargs):
+        if self.preview:
+            self.restore_frozen_basket()
+            return super().get(request, *args, **kwargs)
+        return self.handle_payment_details_submission(request)
 
     #def check_order_is_created_already(self, request):
     #    if request.basket.is_empty:
@@ -123,10 +129,10 @@ class PaymentDetailsView(CorePaymentDetailsView):
             source = Source.objects.get(id=self.checkout_session.payment_id())
         except ObjectDoesNotExist:
             self.restore_frozen_basket()
-            return redirect("checkout:payment-details")
+            return redirect("checkout:preview")
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
             self.restore_frozen_basket()
-            return redirect("checkout:payment-details")
+            return redirect("checkout:preview")
         submission = self.build_submission()
 
         source.temp_shipping = submission["shipping_address"]
@@ -159,10 +165,10 @@ class PaymentDetailsView(CorePaymentDetailsView):
         self.add_payment_source(source)
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
             self.restore_frozen_basket()
-            raise RedirectRequired(reverse("checkout:payment-details"))
+            raise RedirectRequired(reverse("checkout:preview"))
         if source.status not in [PaymentStatus.PREAUTH, PaymentStatus.CONFIRMED]:
             try:
-                if "place_order" in self.request.POST:
+                if self.request.POST.get("action", '') == "place_order":
                     source.temp_form = source.get_form()
                 else:
                     source.temp_form = source.get_form(self.request.POST)
@@ -170,6 +176,6 @@ class PaymentDetailsView(CorePaymentDetailsView):
                 raise RedirectRequired(e.args[0])
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
             self.restore_frozen_basket()
-            raise RedirectRequired(reverse("checkout:payment-details"))
+            raise RedirectRequired(reverse("checkout:preview"))
         if source.status not in [PaymentStatus.PREAUTH, PaymentStatus.CONFIRMED]:
             raise UnableToTakePayment(source.message)

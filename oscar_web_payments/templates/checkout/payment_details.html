@@ -9,7 +9,7 @@
 
 {% block payment_details_content %}
     {% if is_local_url %}
-    <form method="post" action="{% url 'checkout:preview' %}" id="place_order_form">
+    <form method="post" action="" id="place_order_form">
         {% csrf_token %}
     {% else %}
     <form method="{{source.temp_form.method}}" action="{{source.temp_form.action}}" id="place_order_form">
