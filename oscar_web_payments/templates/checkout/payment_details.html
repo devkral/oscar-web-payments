@@ -1,6 +1,25 @@
-{% extends "checkout/payment_details.html" %}
+{% extends "oscar/checkout/payment_details.html" %}
+{# inverted order: first preview, then payment #}
 {% load i18n %}
 
+
 {% block payment_details_content %}
-  <a id="view_preview" href="{% url 'checkout:preview' %}" class="btn btn-primary btn-lg">{% trans "Continue" %}</a>
+    {% if is_local_url%}
+    <form method="post" action="{% url 'checkout:preview' %}" id="place_order_form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="place_order" />
+    {% else %}
+    <form method="{{source.temp_form.method}}" action="{{source.temp_form.action}}" id="place_order_form">
+    {% endif %}
+        {% for field in source.temp_form %}
+            {% include "partials/wtform_field.html" with field=field %}
+        {% endfor %}
+        <div class="form-group clearfix">
+            <div class="row">
+                <div class="col-sm-3 col-sm-offset-9">
+                     <button id='place-order' type="submit" class="btn btn-primary btn-lg btn-block" data-loading-text="{% trans 'Submitting...' %}">{% trans "Place order" %}</button>
+                </div>
+            </div>
+        </div>
+    </form>
 {% endblock %}

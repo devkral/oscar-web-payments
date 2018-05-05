@@ -40,7 +40,6 @@ class PaymentMethodView(CorePaymentMethodView):
         data = None
         if self.checkout_session.payment_method():
             data = {'variant': self.checkout_session.payment_method()}
-        # see own forms
         ctx['form'] = SelectPaymentForm(data)
         return ctx
 
@@ -59,21 +58,33 @@ class PaymentMethodView(CorePaymentMethodView):
         if not form.is_valid():
             raise FailedPreCondition(reverse('checkout:payment-method'), message="Invalid Payment Method")
 
-    def get_success_response(self):
-        return redirect('checkout:preview')
-
 class PaymentDetailsView(CorePaymentDetailsView):
     pre_conditions = CorePaymentDetailsView.pre_conditions + ['check_valid_method']
-
-    _allowed_hosts = settings.ALLOWED_HOSTS
-    if settings.DEBUG and not _allowed_hosts:
-        _allowed_hosts = ['localhost', '127.0.0.1', '[::1]']
+    # invert templates
+    template_name = 'checkout/preview.html'
+    template_name_preview = 'checkout/payment_details.html'
 
     def check_valid_method(self, request):
         try:
             Source.get_provider(self.checkout_session.payment_method())
         except ValueError:
             raise FailedPreCondition(reverse('checkout:payment-method'), message="Invalid Payment Method")
+
+    def get(self, request, *args, **kwargs):
+        if not self.preview:
+            return super().get(request, *args, **kwargs)
+        return self.handle_payment_details_submission(request)
+
+    def render_payment_details(self, request, **kwargs):
+        """
+        Show the payment details page
+
+        This method is useful if the submission from the payment details view
+        is invalid and needs to be re-rendered with form errors showing.
+        """
+        self.preview = True
+        ctx = self.get_context_data(**kwargs)
+        return self.render_to_response(ctx)
 
     #def check_order_is_created_already(self, request):
     #    if request.basket.is_empty:
@@ -108,9 +119,16 @@ class PaymentDetailsView(CorePaymentDetailsView):
         return self.submit(**submission)
 
     def handle_payment_details_submission(self, request):
-        source_type = SourceType.objects.get_or_create(defaults={"name": self.checkout_session.payment_method()}, code=self.checkout_session.payment_method())[0]
+        try:
+            source = Source.objects.get(id=self.checkout_session.payment_id())
+        except ObjectDoesNotExist:
+            self.restore_frozen_basket()
+            return redirect("checkout:payment-details")
+        if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
+            self.restore_frozen_basket()
+            return redirect("checkout:payment-details")
         submission = self.build_submission()
-        source = Source.objects.get(id=self.checkout_session.payment_id())
+
         source.temp_shipping = submission["shipping_address"]
         source.temp_billing = submission["billing_address"]
         source.temp_extra = {
@@ -118,23 +136,19 @@ class PaymentDetailsView(CorePaymentDetailsView):
             "delivery": submission["shipping_charge"].incl_tax
         }
         source.temp_email = submission['order_kwargs']['guest_email']
-
-        url = None
-        try:
-            form = source.get_form()
-        except web_payments.RedirectNeeded as e:
-            return http.HttpResponseRedirect(e.args[0])
-
-        return self.render_preview(request, paymentform=source.temp_form)
+        submission["payment_kwargs"]["source"] = source
+        return self.submit(**submission)
 
     def get_context_data(self, **kwargs):
         ctx = super(PaymentDetailsView, self).get_context_data(**kwargs)
         extra = Source.get_provider(self.checkout_session.payment_method()).extra
         ctx["payment_method"] = extra.get("verbose_name", extra["name"])
-        host = ctx.get("paymentform", None)
+        host = ctx.get("source", None)
+        if host:
+            host = host.temp_form
         if host:
             host = host.action
-        ctx["is_local_url"] = host == ""
+        ctx["is_local_url"] = (host == "")
         if host is not None and not ctx["is_local_url"]: #try harder
             domain = split_domain_port(host)[0]
             if domain and validate_host(domain, self._allowed_hosts):
@@ -145,12 +159,14 @@ class PaymentDetailsView(CorePaymentDetailsView):
         self.add_payment_source(source)
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
             self.restore_frozen_basket()
-            raise RedirectRequired(reverse("checkout:preview"))
+            raise RedirectRequired(reverse("checkout:payment-details"))
         if source.status not in [PaymentStatus.PREAUTH, PaymentStatus.CONFIRMED]:
             try:
                 source.temp_form = source.get_form(self.request.POST)
             except web_payments.RedirectNeeded as e:
                 raise RedirectRequired(e.args[0])
-
+        if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
+            self.restore_frozen_basket()
+            raise RedirectRequired(reverse("checkout:payment-details"))
         if source.status not in [PaymentStatus.PREAUTH, PaymentStatus.CONFIRMED]:
             raise UnableToTakePayment(source.message)
