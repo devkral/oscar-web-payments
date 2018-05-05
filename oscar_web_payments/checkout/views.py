@@ -9,11 +9,11 @@ from django.core.urlresolvers import reverse, reverse_lazy
 from django.utils.translation import ugettext_lazy as _
 from django.db import models
 from django.core.exceptions import ObjectDoesNotExist
-from django import http
 from django.views.generic import TemplateView
 from django.contrib import messages
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
+from django.shortcuts import redirect
 
 from oscar.core.loading import get_class, get_classes, get_model
 
@@ -62,6 +62,9 @@ class PaymentMethodView(CorePaymentMethodView):
         form = SelectPaymentForm(request.POST)
         if not form.is_valid():
             raise FailedPreCondition(reverse('checkout:payment-method'), message="Invalid Payment Method")
+
+    def get_success_response(self):
+        return redirect('checkout:preview')
 
 class PaymentDetailsView(CorePaymentDetailsView):
     payment = False
@@ -131,7 +134,7 @@ class PaymentDetailsView(CorePaymentDetailsView):
             form = None
             url = e.args[0]
 
-        self.render_preview(request, paymentform=form, redirecturl=url)
+        return self.render_preview(request, paymentform=form, redirecturl=url)
 
     def get_context_data(self, **kwargs):
         ctx = super(PaymentDetailsView, self).get_context_data(**kwargs)
@@ -142,7 +145,8 @@ class PaymentDetailsView(CorePaymentDetailsView):
     def handle_payment(self, order_number, total, source, **kwargs):
         self.add_payment_source(source)
         if source.status in [PaymentStatus.ERROR, PaymentStatus.REJECTED]:
-            raise UnableToTakePayment(source.message)
+            self.restore_frozen_basket()
+            raise RedirectRequired(reverse("checkout:preview"))
         if source.status not in [PaymentStatus.PREAUTH, PaymentStatus.CONFIRMED]:
             try:
                 source.temp_form = source.get_form(self.request.POST)
@@ -150,4 +154,4 @@ class PaymentDetailsView(CorePaymentDetailsView):
                 raise RedirectRequired(e.args[0])
 
         if source.status not in [PaymentStatus.PREAUTH, PaymentStatus.CONFIRMED]:
-            raise RedirectRequired(reverse("checkout:preview"))
+            raise UnableToTakePayment(source.message)
