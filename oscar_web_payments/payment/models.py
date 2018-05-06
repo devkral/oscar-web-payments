@@ -40,9 +40,7 @@ class Source(AbstractSource, BasePayment):
     def get_success_url(self):
         return "{}://{}{}".format(getattr(settings, "PAYMENT_PROTOCOL", "https"), Site.objects.get_current().domain, reverse('checkout:payment-details'))
 
-    def get_failure_url(self):
-        return "{}://{}{}".format(getattr(settings, "PAYMENT_PROTOCOL", "https"), Site.objects.get_current().domain, reverse('checkout:preview'))
-
+    get_failure_url = get_success_url
 
     def get_shipping_address(self):
         if self.temp_shipping:
