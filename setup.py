@@ -17,13 +17,17 @@ PACKAGES = [
 REQUIREMENTS = [
     'django-oscar>=1.5,<2.0',
     'django>=1.11',
-    'wtforms-django',
+    'wtforms-django-alex',
     'web-payments-connector>=2.4<4.0a'
 ]
 
 TEST_REQUIREMENTS = [
     'pytest',
-    'pytest-django'
+    'pytest-django',
+    'WebTest>=2.0,<2.1',
+    'coverage>=4.5,<4.6',
+    'django-webtest==1.9.2',
+    'tox>=3.0,<3.1',
 ]
 
 VERSIONING = {
@@ -50,10 +54,17 @@ class PyTest(TestCommand):
         self.test_suite = True
 
     def run_tests(self):
+        import django
+        from django.test.utils import get_runner
+        import demo.settings
+        #settings.configure(default_settings=demo.settings)
+        django.setup()
+        from django.conf import settings
         # import here, cause outside the eggs aren't loaded
-        import pytest
-        errno = pytest.main(self.pytest_args)
-        sys.exit(errno)
+        TestRunner = get_runner(settings)
+        test_runner = TestRunner(verbosity=1, interactive=True)
+        failures = test_runner.run_tests(test_labels=[])
+        sys.exit(failures)
 
 
 setup(

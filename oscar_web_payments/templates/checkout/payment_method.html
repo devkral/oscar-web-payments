@@ -6,7 +6,7 @@
 {% endblock %}
 {% block shipping_address %}{% endblock %}
 {% block payment_method %}
-  <form action="{% url 'checkout:payment-method' %}" class="form-stacked" method="POST">
+  <form action="{% url 'checkout:payment-method' %}" class="form-stacked" method="POST" id="payment_method_form">
       {% csrf_token %}
       {% include "partials/form_fields.html" %}
       <button type="submit" value="{% trans "Proceed" %}" class="btn btn-primary btn-large">{% trans "Continue" %}</button>
