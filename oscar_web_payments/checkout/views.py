@@ -78,19 +78,19 @@ class PaymentDetailsView(CorePaymentDetailsView):
         pass
 
     def check_basket_is_not_empty(self, request):
-        if self.preview or request.POST.get('action', '') == 'place_order':
-            super().check_basket_is_not_empty(request)
-        else:
-            oldbasket = request.basket
-            request.basket = self.get_submitted_basket()
-            request.basket.strategy = oldbasket.strategy
-            super().check_basket_is_not_empty(request)
-            request.basket = oldbasket
+        if request.basket.is_empty:
+            basket = self.get_submitted_basket()
+            basket.strategy = request.basket.strategy
+
+            if basket.is_empty:
+                raise FailedPreCondition(
+                    url=reverse('basket:summary'),
+                    message=_(
+                        "You need to add some items to your basket to checkout")
+                )
 
     def check_basket_is_valid(self, request):
-        if self.preview or request.POST.get('action', '') == 'place_order':
-            super().check_basket_is_valid(request)
-        else:
+        if not self.preview:
             oldbasket = request.basket
             request.basket = self.get_submitted_basket()
             request.basket.strategy = oldbasket.strategy
@@ -119,8 +119,16 @@ class PaymentDetailsView(CorePaymentDetailsView):
 
     def get(self, request, *args, **kwargs):
         if self.preview:
-            return super().get(request, *args, **kwargs)
+            self.restore_frozen_basket()
+            return self.render_preview(request, **kwargs)
         return self.handle_payment_details_submission(request)
+
+    def render_preview(self, request, **kwargs):
+        # basket should not change
+        basket = request.basket
+        self.freeze_basket(basket)
+        self.checkout_session.set_submitted_basket(basket)
+        return super().render_preview(request, **kwargs)
 
     #def check_order_is_created_already(self, request):
     #    if request.basket.is_empty:
@@ -135,13 +143,16 @@ class PaymentDetailsView(CorePaymentDetailsView):
     #        )
 
     def handle_place_order_submission(self, request):
-        submission = self.build_submission()
+        basket = self.get_submitted_basket()
+        basket.strategy = request.basket.strategy
+        submission = self.build_submission(basket=basket)
         source_type = SourceType.objects.get_or_create(defaults={"name": self.checkout_session.payment_method()}, code=self.checkout_session.payment_method())[0]
         source = Source.objects.create(**{
             "source_type": source_type,
             "currency": submission["basket"].currency,
             "total": submission["order_total"].incl_tax,
-            "captured_amount": submission["order_total"].incl_tax
+            "captured_amount": submission["order_total"].incl_tax,
+            "order_number": self.generate_order_number(submission["basket"])
         })
         self.checkout_session.set_payment_id(source.id)
         source.temp_shipping = submission["shipping_address"]
@@ -152,9 +163,6 @@ class PaymentDetailsView(CorePaymentDetailsView):
         }
         source.temp_email = submission["order_kwargs"]['guest_email']
         submission["payment_kwargs"]["source"] = source
-
-        self.freeze_basket(submission["basket"])
-        self.checkout_session.set_submitted_basket(submission["basket"])
         try:
             source.temp_form = source.get_form()
         except web_payments.RedirectNeeded as e:
@@ -177,7 +185,7 @@ class PaymentDetailsView(CorePaymentDetailsView):
             return self.render_preview(
                 self.request, error=msg)
         basket = self.get_submitted_basket()
-        basket.strategy = self.request.basket.strategy
+        basket.strategy = request.basket.strategy
         submission = self.build_submission(basket=basket)
 
         source.temp_shipping = submission["shipping_address"]

@@ -95,6 +95,10 @@ TEMPLATES = [
                 'oscar.apps.customer.notifications.context_processors.notifications',
                 'oscar.core.context_processors.metadata',
             ],
+            'libraries': {
+                # should be autoloaded but is ignored
+                "wtforms": "wtforms_django.templatetags.wtforms"
+            },
         },
     },
 ]

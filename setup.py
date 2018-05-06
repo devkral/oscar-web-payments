@@ -17,7 +17,7 @@ PACKAGES = [
 REQUIREMENTS = [
     'django-oscar>=1.5,<2.0',
     'django>=1.11',
-    #'wtforms-django-alex>=0.2.1',
+    'wtforms-django',
     'web-payments-connector>=2.4<4.0a'
 ]
 

@@ -33,9 +33,11 @@ class Source(AbstractSource, BasePayment):
         _("Amount Refunded"), decimal_places=2, max_digits=12,
         default=CENTI0)
 
-    currency = models.CharField(max_length=10)
+    # for retrieving failed transactions (not enabled by default)
+    order_number = models.CharField(
+        _("Order number"), max_length=128, null=True, blank=True)
 
-    shipping_method_code = models.CharField(max_length=100, null=True, blank=True)
+    currency = models.CharField(max_length=10)
 
     def get_success_url(self):
         return "{}://{}{}".format(getattr(settings, "PAYMENT_PROTOCOL", "https"), Site.objects.get_current().domain, reverse('checkout:payment-details'))
@@ -137,8 +139,17 @@ class Source(AbstractSource, BasePayment):
             }
 
     @property
+    def reference(self):
+        return self.source_type.code
+
+    @property
     def variant(self):
         return self.source_type.code
+
+    @property
+    def label(self):
+        extra = self.get_provider(self.source_type.code).extra
+        return "-".join([extra.get("verbose_name", extra["name"]), self.id])
 
     def save(self, *args, **kwargs):
         self.create_token()
