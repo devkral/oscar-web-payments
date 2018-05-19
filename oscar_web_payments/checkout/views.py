@@ -5,16 +5,19 @@ from oscar.apps.checkout.views import PaymentMethodView as CorePaymentMethodView
 
 from oscar.apps.checkout import signals
 from oscar.apps.checkout.exceptions import FailedPreCondition
+from oscar.core.loading import get_class, get_classes, get_model
 
-from django.core.urlresolvers import reverse, reverse_lazy
 from django.utils.translation import ugettext_lazy as _
 from django import http
 from django.http.request import split_domain_port, validate_host
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 from django.shortcuts import redirect
+try:
+    from django.urls import reverse, reverse_lazy
+except ImportError:
+    from django.core.urlresolvers import reverse, reverse_lazy
 
-from oscar.core.loading import get_class, get_classes, get_model
 
 from .forms import SelectPaymentForm
 #from payments.forms import SelectPaymentForm

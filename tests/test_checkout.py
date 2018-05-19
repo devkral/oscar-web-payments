@@ -36,7 +36,7 @@ class CheckoutMixin(object):
                 num_in_stock=10, price_excl_tax=D('12.00'), product=product)
         detail_page = self.get(product.get_absolute_url())
         form = detail_page.forms['add_to_basket_form']
-        form.submit()
+        return form.submit()
 
     def add_voucher_to_basket(self, voucher=None):
         if voucher is None:
@@ -44,9 +44,11 @@ class CheckoutMixin(object):
         basket_page = self.get(reverse('basket:summary'))
         form = basket_page.forms['voucher_form']
         form['code'] = voucher.code
-        form.submit()
+        return form.submit()
 
     def enter_guest_details(self, email='guest@example.com'):
+        self.add_product_to_basket()
+        # why redirect instead correct page
         index_page = self.get(reverse('checkout:index'))
         index_page.form['username'] = email
         index_page.form.select('options', GatewayForm.GUEST)
