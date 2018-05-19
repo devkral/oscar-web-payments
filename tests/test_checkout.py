@@ -1,7 +1,10 @@
 from decimal import Decimal as D
+import sys
+from importlib import import_module
 
-
-from django.urls import reverse
+from django.test.utils import override_settings
+from django.conf import settings
+from django.urls import clear_url_caches, reverse
 
 from oscar.test.testcases import WebTestCase
 from oscar.test import factories
@@ -16,7 +19,19 @@ UserAddress = get_model('address', 'UserAddress')
 Country = get_model('address', 'Country')
 GatewayForm = get_class('checkout.forms', 'GatewayForm')
 
+# Python 3 compat
+try:
+    from imp import reload
+except ImportError:
+    pass
 
+
+def reload_url_conf():
+    # Reload URLs to pick up the overridden settings
+    if settings.ROOT_URLCONF in sys.modules:
+        reload(sys.modules[settings.ROOT_URLCONF])
+    import_module(settings.ROOT_URLCONF)
+    clear_url_caches()
 
 # stolen from django oscar tests
 class CheckoutMixin(object):
@@ -47,7 +62,6 @@ class CheckoutMixin(object):
         return form.submit()
 
     def enter_guest_details(self, email='guest@example.com'):
-        self.add_product_to_basket()
         # why redirect instead correct page
         index_page = self.get(reverse('checkout:index'))
         index_page.form['username'] = email
@@ -79,7 +93,6 @@ class CheckoutMixin(object):
         return preview.forms['place_order_form'].submit().follow()
 
     def reach_payment_details_page(self, is_guest=False):
-        self.add_product_to_basket()
         if is_guest:
             self.enter_guest_details('hello@egg.com')
         self.enter_shipping_address()
@@ -90,16 +103,26 @@ class CheckoutMixin(object):
         payment_details = self.reach_payment_details_page(is_guest)
         return payment_details.click(linkid="view_preview")
 
+
+@override_settings(OSCAR_ALLOW_ANON_CHECKOUT=True)
 class CheckoutTestCase(CheckoutMixin, WebTestCase):
+    is_anonymous = True
+
+    def setUp(self):
+        reload_url_conf()
+        super(CheckoutTestCase, self).setUp()
+
     def test_checkout(self):
+        ret = self.add_product_to_basket()
+        # why have we no product in basket yet?
         payment_selection = self.reach_payment_details_page(is_guest=True)
         self.assertIn('payment_method_form', payment_selection.forms)
         form = payment_selection.form['payment_method_form']
         form.variant = "dummy_capture"
         preview = form.submit().follow()
         self.assertIn('place_order_form', preview.form)
-        details = preview.form["place_order_form"].submit().follow()
+        details = preview.forms["place_order_form"].submit().follow()
         self.assertIn('payment_form', details.form)
-        form = details.form["payment_form"]
+        form = details.forms["payment_form"]
         # transmit error
         #form.status =
